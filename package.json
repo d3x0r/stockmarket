@@ -10,7 +10,8 @@
   },
   "dependencies":{
 	"sack.vfs":"latest",
-	"@d3x0r/popups":"latest"
+	"@d3x0r/popups":"latest",
+	"jsox":"latest"
 	},
   "private": false,
   "author": "d3x0r",
