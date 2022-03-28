@@ -1,0 +1,18 @@
+{
+  "name": "@d3x0r/stockmarket",
+  "version": "1.0.0",
+  "description": "Stock Market Game Reimplementation (Original Western Publishing Co(?))",
+  "main": "index.js",                                                                   
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+    , "link": "npm link sack.vfs @d3x0r/popups jsox"
+    , "start":"cd ui && node --inspect-brk --experimental-loader=sack.vfs/import.mjs  ../server/server.mjs"
+  },
+  "dependencies":{
+	"sack.vfs":"latest",
+	"@d3x0r/popups":"latest"
+	},
+  "private": false,
+  "author": "d3x0r",
+  "license": "ISC"
+}
