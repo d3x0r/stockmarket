@@ -79,3 +79,88 @@
 				color:black;
 				font-weight:bold;
 		}
+
+
+
+
+.formContainer-lobby {
+	font-size:250%;
+	visibility:visible;
+	padding:0px;border-color:black;border-width:2px;
+	border-style:solid;z-index:100;position:absolute;
+	left:;
+	top:25%;
+	width:max-content;
+	height:max-content;
+	background-color:rgba(150, 150, 150, 0.75);
+	color:rgb(33, 40, 29);
+	border-radius:10px;
+
+}
+
+.frameCaption-lobby {
+
+	padding:0px;
+	background-color:aquamarine;
+	border-width:0px;
+	border-style:solid;
+	/*osition:absolute; */
+	color :black;
+	left:0;top:0;
+	/*width:100%;*/
+	padding-left:0.5em;
+	height:1.5em;
+	line-height:1.5em;
+	/*display:inline-table;*/
+
+
+    border-style: ridge;
+    border-width: 5;
+    border-color: #9c9b9b;
+    border-radius: 10px;
+}
+
+.frameContent-lobby {
+	margin:5px;
+	padding:0.5em;
+}
+
+.textInputOption-lobby {
+	font-size:100%;
+}
+
+    	.button-lobby{
+			font-size:100%;
+			border-radius:10px;
+			background:linear-gradient(rgb(76, 139, 176), #8be2de,rgb(76, 148, 176) );
+			padding:0px;
+			border-style:outset;
+			padding-right:2px;
+			padding-bottom:2px;
+			float:right;
+		}
+
+    	.pressed-lobby{
+			border-style:inset;
+			padding-left:2px;
+			padding-top:2px;
+			padding-right:0px;
+			padding-bottom:0px;
+		}
+
+	.button-lobby:hover {
+			border-color:#0dd;
+	}
+
+    	.buttonInner-lobby{
+			border-radius:10px;
+				background:lightgray;
+				padding-left:10px;
+				padding-right:10px;
+				margin:5px;
+				margin-left:25px;
+				margin-right:25px;
+				border-style:inset;
+				color:black;
+				font-weight:bold;
+		}
