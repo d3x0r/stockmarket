@@ -5,7 +5,7 @@ import * as protocol from "./gameProtocol.js"
 
 import {Login} from "./login.js"
 import {Lobby} from "./lobby.js"
-import {Board,makeGameBoard} from "./board.js"
+import {GameBoard,Board} from "./board.js"
                                    
 // <link rel="stylesheet" href="../styles.css">
 const style = document.createElement( "link" );
@@ -19,37 +19,36 @@ document.head.appendChild( style2 );
 
 export function go() {
 	/* go. */
+
+	let login = null;
 	let lobby = null;
         
 	const useform = document.body;
 	
+	// make page body a popup so it's got other trackable properties set.
 	const form = new Popup( null, null, {from:useform} );
 
 	protocol.doReopen();
 
-		const user = localStorage.getItem( "userName" );
-		
-		if( !user ) {
-			new Login( form );
-		} else
-			protocol.sendUserName( user );
-
-	protocol.on( "login", (msg)=>{
-		console.log( "default login handler? !!!!! UNUSED?!" );
-		lobby = new Lobby( form );
-	});
+	const user = localStorage.getItem( "userName" );
+	
+	if( !user ) {
+		login = new Login( form );
+	} else {
+		protocol.sendUserName( user );
+	}
 
 	protocol.on( "lobby", (msg)=>{
 		//console.log( "lobby handler?", msg );
-		lobby = new Lobby( form, msg );
+		lobby = new Lobby( form, msg, login?.username || user );
 	});
 	protocol.on( "load", (data)=>{
 		//console.log( "loadGame handler?", data );
 		loadGameForm( form, protocol );
 		// lobby.remove(); ??
-		lobby.hide();
+		if(lobby) // might have skipped the lobby step altogether
+			lobby.hide();
 
-		//new Lobby( form, msg );
 	});
 
 	protocol.on( "join", (msg)=>{
@@ -68,37 +67,18 @@ export function go() {
 	
 
 	//loadGameForm( form );
-}
 
 
-let oldGame = null;
-let loginForm = null;
+	let oldGame = null;
+	let loginForm = null;
 
-function loadGameForm(form, events) {
-	// on reconnect, we're going to potentially have a different game data...
-	if( oldGame ) oldGame.remove();
-	
-	const GameBoard = new Popup( "Stock Market", form );
+	function loadGameForm(form, events) {
+		// on reconnect, we're going to potentially have a different game data...
+		if( oldGame ) oldGame.remove();
+		
+		oldGame = new GameBoard( form, events );
+        
+	}
 
-	oldGame = GameBoard;
-
-	const gameBoard = document.createElement( "canvas" );
-	gameBoard.width = 4096;
-	gameBoard.height = 4096;
-	gameBoard.style.width = "90vh";
-	gameBoard.style.height = "90vh";
-	
-	const gameCtx = gameBoard.getContext( "2d" );
-	GameBoard.appendChild( gameBoard );
-	makeGameBoard( gameCtx );
-	                      
-
-
-
-	events.on( "join", ()=>{
-		login.hide();
-	} );
 
 }
-
-

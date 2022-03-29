@@ -11,7 +11,7 @@ export class Lobby extends Popup {
 	user_rows = [];
 	game_rows = [];
 
-	constructor( parent, initial ) {
+	constructor( parent, initial, userName ) {
 		super( "Lobby", parent, { suffix:'-lobby' } );
 		this.gameList.className = "lobby-game-list";
 		this.appendChild( this.gameList );
@@ -24,9 +24,17 @@ export class Lobby extends Popup {
 			if( msg.fail ) {
 				popups.Alert( "Failed to create game; name already exists...\nUse Join Instead?" );
 			}
+			else
+				this.addGame( msg.game );
+		} );		
+		protocol.on( "user", (msg)=>{
+			this.addUser( msg.user );
+		} );		
+		protocol.on( "part", (msg)=>{
+			this.dropUser( msg.user );
 		} );		
 		popups.makeButton( this, "Create Game", ()=>{
-			const query = popups.simpleForm( "Enter New Name", "Enter unique name", "(username's Game)", (value)=>{
+			const query = popups.simpleForm( "Enter New Name", "Enter unique name", `${userName}'s Game`, (value)=>{
 
 					protocol.createGame( value );
 					// ok.
@@ -60,6 +68,12 @@ export class Lobby extends Popup {
 		this.userList.appendChild( row );
 	}
 	dropUser( user ) {
+		const userId = this.user_rows.findIndex( ur=>ur.user.name === user.name );
+		if( userId >= 0) {
+			const ur = this.user_rows[userId];
+			const realUser = this.user_rows.splice( userId, 1 );
+			realUser[0].row.remove();
+		}
 	}
 
 	addGame( game ) {
@@ -71,10 +85,10 @@ export class Lobby extends Popup {
 		name.textContent = game.name;
 		name.style.display = "table-cell";
 		row.appendChild( name );
-
-		popups.makeButton( row, "Join", ()=>{
-			protocol.joinGame( game.name );
-		} );
+		if( game.name[0] !== '-' )
+			popups.makeButton( row, "Join", ()=>{
+				protocol.joinGame( game.name );
+			} );
 
 		this.gameList.appendChild( row );
 

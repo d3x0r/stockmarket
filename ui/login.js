@@ -27,7 +27,7 @@ class LoginForm extends Popup {
 	doLogin() {
 		if( this.info.name ) {
 			localStorage.setItem( "userName", this.info.name );
-			protocol.sendUsername( this.info.name );
+			protocol.sendUserName( this.info.name );
 			this.hide();
 		} else {
 			popups.Alert( "Name can't be blank..." );
