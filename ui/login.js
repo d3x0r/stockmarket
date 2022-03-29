@@ -1,12 +1,16 @@
 
 import {Popup,popups} from "/node_modules/@d3x0r/popups/popups.mjs"
 
+import {Events} from "./events.js";
 
-export class Login extends Popup {
+
+import * as protocol from "./gameProtocol.js"
+
+class LoginForm extends Popup {
 	
 	info = { name: '' };
 	username = null;
-
+	
 	constructor( parent ) {
 		super( "Login", parent, { suffix:'-login' } );
 		this.username = popups.makeTextInput( this, this.info, "name", "Name" );
@@ -22,11 +26,20 @@ export class Login extends Popup {
 
 	doLogin() {
 		if( this.info.name ) {
-			protocol.send( {op:"username", name:this.info.name } );
+			localStorage.setItem( "userName", this.info.name );
+			protocol.sendUsername( this.info.name );
 			this.hide();
 		} else {
 			popups.Alert( "Name can't be blank..." );
 		}
 	}
 
+}
+
+
+export class Login extends Events {
+	constructor( parent ) {
+		super();
+		this.form = new LoginForm( parent, this );
+	}
 }

@@ -5,26 +5,36 @@ let ws = null;
 let connected = false;
 
 
-class Events {
-	#events = {};
-	on( evt, d ) {
-		if( "function" === typeof d ) {
-			if( evt in this.#events ) this.#events[evt].push(d);
-			else this.#events[evt] = [d];
-		}else {
-			if( evt in this.#events ) for( let cb of this.#events[evt] ) { const r = cb(d); if(r) return r; }
-		}
-	}
-}
-
+import {Events} from "./events.js";
 
 class GameState extends Events {
 	board = null;
 	stocks = null;
+	events = new Events();
 }
 
+
+export function joinGame( name ) {
+	send( {op:"join", name:name } );
+}
+
+export function createGame( name ) {
+	send( {op:"game", name:name } );
+}
+
+export function	sendUserName( name )  {
+
+	send( {op:"username", name:name } );
+}
+
+
 export const gameState = new GameState();
+
 let gameEvents = null;
+
+export function on(a,b) {
+	return gameEvents.on(a,b);
+}
 
 export function doReopen() {
         const peer = location.protocol.replace( "http", "ws" )+"//"+location.host +"/";
@@ -37,6 +47,7 @@ export function doReopen() {
 	function getHandler() {
 		
 		const parser = JSOX.begin( dispatchMessage );
+		gameEvents = new Events();
 		let ws = null;
 		return function handleGameProtocol( evt ) {
 			ws = evt.target;
@@ -48,12 +59,14 @@ export function doReopen() {
 		}
 
 	}
-
+	
 }
 
 
 function opened() {
-	connected = true; 	
+	connected = true; 
+	pending.forEach( send );	
+	pending.length = 0;
 }
 
 function reopen() {
@@ -73,8 +86,8 @@ function parseMessage( ws, msg ) {
 	case "data":
 		gameState.board = msg.board;
 		gameState.stocks = msg.stocks;
-		gameEvents = new Events();
-		gameState.on( "load", gameEvents );
+		//gameEvents = new Events();
+		gameEvents.on( "load" );
 		break;
 	default: // just make everything dispatched to callbacks.
 		gameEvents.on( msg.op, msg );
@@ -83,9 +96,20 @@ function parseMessage( ws, msg ) {
 
 }
 
+
+const pending = [];
 export function send( msg ) {
-	if( "string" === typeof msg ) 
-		ws.send( msg );
-	else 
-		ws.send( JSOX.stringify( msg ) );
+	if( ws.readyState === 1 ) {
+		if( "string" === typeof msg ) 
+			ws.send( msg );
+		else 
+			ws.send( JSOX.stringify( msg ) );
+	}else {
+		//if( ws.readyState === 1 )
+		 {
+			pending.push(msg );
+		}
+	}
 }
+
+
