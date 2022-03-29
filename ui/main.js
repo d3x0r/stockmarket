@@ -19,15 +19,53 @@ document.head.appendChild( style2 );
 
 export function go() {
 	/* go. */
+	let lobby = null;
         
 	const useform = document.body;
 	
 	const form = new Popup( null, null, {from:useform} );
 
 	protocol.doReopen();
-	protocol.gameState.on( "load", (events)=>{ loadGameForm( form, events ) } );
+
+		const user = localStorage.getItem( "userName" );
+		
+		if( !user ) {
+			new Login( form );
+		} else
+			protocol.sendUserName( user );
+
+	protocol.on( "login", (msg)=>{
+		console.log( "default login handler? !!!!! UNUSED?!" );
+		lobby = new Lobby( form );
+	});
+
+	protocol.on( "lobby", (msg)=>{
+		//console.log( "lobby handler?", msg );
+		lobby = new Lobby( form, msg );
+	});
+	protocol.on( "load", (data)=>{
+		//console.log( "loadGame handler?", data );
+		loadGameForm( form, protocol );
+		// lobby.remove(); ??
+		lobby.hide();
+
+		//new Lobby( form, msg );
+	});
+
+	protocol.on( "join", (msg)=>{
+		lobby.addUser( msg );
+	} );
+
+	protocol.on( "part", (msg)=>{
+		lobby.dropUser( msg );
+	} );
+
+	protocol.gameState.on( "load", (events)=>{ 
+
+
+	} );
+
 	
-	const lobby = new Lobby( form );
 
 	//loadGameForm( form );
 }
@@ -54,9 +92,6 @@ function loadGameForm(form, events) {
 	GameBoard.appendChild( gameBoard );
 	makeGameBoard( gameCtx );
 	                      
-	const login = new Login( GameBoard );
-	loginForm = login;
-	login.show();
 
 
 

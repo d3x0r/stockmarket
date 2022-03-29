@@ -84,6 +84,7 @@
 
 
 .formContainer-lobby {
+	min-width:80%;
 	font-size:250%;
 	visibility:visible;
 	padding:0px;border-color:black;border-width:2px;
@@ -149,7 +150,7 @@
 		}
 
 	.button-lobby:hover {
-			border-color:#0dd;
+			border-color:#dd0;
 	}
 
     	.buttonInner-lobby{
@@ -164,3 +165,34 @@
 				color:black;
 				font-weight:bold;
 		}
+
+.lobby-game-list {
+	display:inline-block;
+	border-radius:10px;
+	border:black solid 3px;
+	min-width:45%;
+}
+
+.lobby-user-list {
+	display:inline-block;
+	border-radius:10px;
+	float:right;
+	border:black solid 3px;
+	width:45%;
+}
+
+
+.popupInputField {
+	font-size:110%;
+}
+.popupCancel {
+	font-size:110%;
+	width:unset;
+}
+.popupOkay {
+	font-size:110%;
+	width:unset;
+}
+.frameForm {
+	font-size:250%;
+}
