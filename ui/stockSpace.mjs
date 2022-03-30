@@ -1,10 +1,12 @@
 
+const pendingMeetings = [];   // the actual meeting points aren't created until after the entrances...
 
 export class StockSpace {
 	mode = null;
 	def = null;
 	id = 0;
 	pay = 0;
+	job = false;
 	onRoll = null;
 	stock = null;
 	leaveLeft = false;
@@ -17,16 +19,25 @@ export class StockSpace {
 	direction = 0; // draw normal flat left-right sorta
 	broker = false;
 	
+	holders = null; // array
+	meeting = null; // space pointer
+	meetingDirection = true; // left/right
+
 	constructor( board, space ) {
 		
 		this.def = space;
 		this.id = space.id;
-		if( "market" in space )
+		if( "market" in space ) {
 			this.market = space.market;
+		}
 		if( "stock" in space ) {
 			this.stock = board.stocks.find( s=>s.id==space.stock );
-			if( "holders" in space )
+			if( "holders" in space ) {
 				this.holders = space.holders;
+				this.meeting = board.spaces.find( s=>(s.id === this.holders[0] ) );
+				if( !this.meeting ) pendingMeetings.push( this );
+				this.meetDirection = !this.holders[1];// convert to bool  (reverse value)			
+			}
 		}
 		if( "label" in space ) {
 			this.label = space.label;
@@ -45,7 +56,7 @@ export class StockSpace {
 		}
 		if( "right" in space ) {
 			this.right = board.spaces.find( s=>(s.id === space.right ) );
-			if( this.right ) this.right.right = this;
+			if( this.right ) this.right.left = this;
 		}
 
 		if( "leaveLeft" in space ) {
@@ -55,6 +66,13 @@ export class StockSpace {
 			this.leaveRight = space.leaveRight;
 		}
 
+		for( let i = 0; i < pendingMeetings.length; i++ ) {
+			if( pendingMeetings[i].holders[0]=== this.id ) {
+				pendingMeetings[i].meeting = this;
+				pendingMeetings.splice(i,1);
+				break;
+			}
+		}
 
 		if( space.start ) {
 			this.start = true;
@@ -66,10 +84,14 @@ export class StockSpace {
 			this.quit = true;
 		} else if( space.sellStocks ) {
 			this.sellStocks = true;
+		} else if( space.center ) {
+			this.job = true;
 		} else if( space.broker ) {
 			this.broker = true;	
 		} else if( space.sell ) {
 			this.sell = true;
+		} else if( space.split ) {
+			this.split = space.split.split('/');		
 		}
 		
 		if( board.handleStart ) {
@@ -88,8 +110,6 @@ export class StockSpace {
 				this.mode = board.handleQuit.bind( board, this );
 			} else if( space.split ) {
 				// quit the game.
-				this.split = space.split.split('/');
-				
 				this.mode = board.handleSplit.bind( board, this );
 			} else if( space.sellStocks ) {
 				// sell some stocks...

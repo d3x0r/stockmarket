@@ -3,28 +3,44 @@
 import * as protocol from "./gameProtocol.js"
 import {GameWait} from "./gameWait.js" 
 import {Stock} from "./stock.mjs" 
+import {BuyForm} from "./buyForm.js"
 import {StockSpace} from "./stockSpace.mjs" 
 import {Popup,popups} from "/node_modules/@d3x0r/popups/popups.mjs"
 
+let gameWaiter = null;
+
+// gameBoard is the form containing the game canvases.
+// contexts are contexts for game canvases...
 function makeGameBoard( gameBoard, ctx, overlayCtx ) {
 	const gameState = protocol.gameState;
 
 	const board = new Board( gameState.board, gameState.stocks, overlayCtx );
 	
-	console.log( "Draw a new board:", board );
 	board.draw( ctx );
 
-              new GameWait( gameBoard )
         return board;
 }
 
 export class GameBoard extends Popup {
 
 	board = null;
+	#allowPlay = false;
+	isIn = null;
+	currentPlayer = null;
+	gameAlert = new popups.AlertForm();
 
+	get allowPlay() { return this.#allowPlay }
+	set allowPlay(val){
+		this.#allowPlay = val;
+		
+	}
 	constructor(form) {
 		super( "Stock Market", form );
         
+
+		this.buyForm = new BuyForm( this );
+	
+		this.gameAlert.hide();
 		const gameBoard = this.gameBoard = document.createElement( "canvas" );
 		gameBoard.width = 4096;
 		gameBoard.height = 4096;
@@ -50,12 +66,115 @@ export class GameBoard extends Popup {
 		this.board = makeGameBoard( this, this.gameCtx, this.gameCtxOverlay );
 
 
+		const game = protocol.gameState.game;
+		const gameCurrentPlayer = game.users[game.currentPlayer];
+		const players = protocol.gameState.players;
+		let inProgress = true;
+
+		let thisPlayer;
+		for( let player of players ) {
+			if( player.name === protocol.gameState.username ) 
+				thisPlayer = player;
+			if( !player.space ) inProgress = false;
+		}
+
+
+		if( thisPlayer.name === gameCurrentPlayer.name ) {
+			this.board.allowPlay = true;
+			this.board.addHighlight( this.board.roll );
+		}
+
+		if( !inProgress ) {
+			if( !gameWaiter ) gameWaiter = new GameWait( this );
+			else              gameWaiter.reset();
+		}
+		else
+			if( thisPlayer ) {
+				// I should be a player, but for my player, find my space, and set it current in the board
+				// otherwise it's a new game... this should also be 'inProgress'
+				const playerSpace = this.board.spaces.find( space=>space.id===thisPlayer.space );
+		        
+				this.board.currentSpace = playerSpace;		
+			}
+
+		protocol.on( "go", ()=>{
+			this.board.allowPlay = true;
+			gameWaiter.hide();
+		} );
+		protocol.on( "roll", (msg)=>{
+			console.log( "got roll:", msg );
+		} );
+		protocol.on( "turn", (msg)=>{
+			this.currentPlayer = protocol.gameState.players.find( player=>player.name === msg.name );
+			if( this.currentPlayer.name === protocol.gameState.username ) {
+				this.board.addHighlight( this.board.roll );
+				this.gameAlert.show( "It's your turn..." );
+			}else
+				this.gameAlert.show( "It's " + this.currentPlayer.name + "'s turn..." );
+		} );
+		protocol.on( "start", (msg)=>{
+			// this should include the player turn order too.
+			this.currentPlayer = protocol.gameState.players.find( player=>player.name === msg.name );
+			if( this.currentPlayer.name === protocol.gameState.username ) {
+				this.board.addHighlight( this.board.roll );
+				this.gameAlert.show( "It's your turn..." );
+			}else
+				this.gameAlert.show( "It's " + this.currentPlayer.name + "'s turn..." );
+		} );
+
+
+		protocol.on( "space", (msg)=>{
+			console.log( "got playerMove:", msg );
+			const space = this.board.spaces.find( (space)=>space.id === msg.id );			
+			if( msg.name === protocol.gameState.username ) {
+				if( space.stock ) {
+					this.buyForm.show( thisPlayer, space.stock );
+				}
+				this.board.currentSpace = space;
+				this.board.animate();
+			} else {
+				const player = protocol.gameState.players.find( player=>player.name === msg.name );
+				this.board.addToken( player, space );
+			}
+			
+		} );
+
+		protocol.on( "pay", (msg)=>{
+			const paid = protocol.gameState.players.find( player=>player.name === msg.user );
+			console.log( "Player Cash Update:", msg );
+			paid.cash = msg.balance;			
+		} );
+		protocol.on( "choose", (msg)=>{
+			this.board.clearHighlights();
+			for( let space of this.board.spaces ) {
+				let c;
+				if( c = msg.choices.find( c=>c.space === space.id ) ) {
+					this.board.addHighlight( space, c.stock );
+				}
+			}
+			// refresh overlay
+			this.board.animate();
+		} );
+
 		this.gameBoardOverlay.addEventListener( "mousemove", (evt)=>this.mousemove(event) );
 		this.gameBoardOverlay.addEventListener( "mouseup", (evt)=>this.mouseup(event) );
 		this.gameBoardOverlay.addEventListener( "mousedown", (evt)=>this.mousedown(event) );
 	}
 
 
+	mousedown(evt){
+		if( this.isIn ) {
+			this.isDown = this.isIn;
+		}
+	}
+	mouseup(evt){
+		if( this.isIn ) {
+			if( this.isIn === this.isDown ) {
+				this.isDown.space.mode( this.isDown.stock );
+			}
+		}
+		this.isDown = null;
+	}
 	mousemove(evt){
 		var rect = this.gameBoard.getBoundingClientRect();
 		const x = evt.clientX - rect.left;
@@ -64,11 +183,12 @@ export class GameBoard extends Popup {
 		const xr = x* 26  / rect.width ;
 		const yr = y * 26 / rect.height;
 
-		const isIn = this.board.selected.find( space=>{
+		this.isIn = this.board.selected.find( sel=>{ const space = sel.space;
 			return( xr >= space.position[0] && yr >= space.position[1] &&
 				xr <= ( space.position[0]+space.size[0] ) && yr <= ( space.position[1]+space.size[1] ) )
 		} );
-		this.board.setActive( isIn );
+		if( this.isIn ) 
+			this.board.setActive( this.isIn.space, this.isIn.stock );
 	}
 }
 
@@ -81,21 +201,36 @@ export class Board {
 	ctx = null; // overlay context
 	waiter = null;
 	hover = null;
+	currentSpace = null;
+	state = 0;
+	roll = null;
+	starts = [];
+	jobs = [];
+	allowedPlay = false;
+	selected =  [];
+	timer = null;
+
 	constructor( board, stocks, ctx ) {
 		this.ctx = ctx;
 		stocks.stocks.forEach( stock=>{
-			this.stocks.push( new Stock(stock) );	
+			this.stocks.push( new Stock( protocol.gameState.game, stock) );	
 		} );
 		board.spaces.forEach( (space)=>new BoardSpace( this, space ) );		
-
+		this.spaces.forEach( space=>{
+			if( space.roll) this.roll = space;
+			if( space.start) this.starts.push( space );
+			if( space.job) this.jobs.push( space );
+		} );
 		//this.waiter = new GameWait( this );
+		this.jobs.forEach( job=>this.addHighlight( job ) );
+	}
 
-		this.addHighlight( this.spaces[0] );
-		this.addHighlight( this.spaces[1] );
-		this.addHighlight( this.spaces[2] );
-		this.addHighlight( this.spaces[3] );
-		
-
+	setCurrent(space,stock) {
+		if( space != this.currentSpace ) {
+			protocol.sendSpace( space.id, stock );
+			if( !space.job ) this.selected.length = 0;
+			return;
+		}
 	}
 
 	setActive( space ) {
@@ -115,57 +250,95 @@ export class Board {
 		}
 	}
 
+	addToken( user, space ) {
+		console.log( "Player is now moved...", user.name, space.id );
+	}
+
 	draw( ctx ) {
 		for( let space of this.spaces ) space.draw( ctx );
 
 		//this.spaces[3].drawHighlight( this.ctx );
 	}
 
-	selected =  [];
-	timer = null;
 
 	animate(n) {
 		if( !this.timer )
 			this.timer = setTimeout(  ()=>{
 				this.timer = 0;
+				this.state = 1-this.state;
 				this.animate( true )
 			}, 500 );
 		
 		this.ctx.clearRect( 0, 0, 4096, 4096 );
-		this.selected.forEach( space=>{if( space === this.hover ) return;space.drawHighlight( n, this.ctx ) });
+		this.selected.forEach( sel=>{const space=sel.space; if( space === this.hover || space == this.currentSpace ) return; space.state=this.state; space.drawHighlight( n, this.ctx ) });
 
-		if( this.hover )
-			this.hover.drawHover( this.ctx );
+		if( this.currentSpace ) {
+			this.currentSpace.state=this.state;
+			this.currentSpace.drawCurrent( this.ctx );
+		}
+
+		if( this.hover ) {
+			this.hover.state=this.state;
+			if( this.currentSpace == this.hover ) {
+			} else {
+			
+				this.hover.drawHover( this.ctx );
+			}
+		}
 
 	}
 
-	addHighlight( space ) {
-		
-		if( this.selected.push( space ) == 1) {
+	addHighlight( space, stock ) {
+				
+		if( this.selected.push( {space,stock} ) == 1) {
 			if( !this.timer ) this.animate(false);
 
 		}
 	}
+	clearHighlights() {
+		this.selected.length = 0;
+	}
+	clearHighlight( space ) {
+		const id = this.selected.findIndex( s=>s.space===space );
+		if( id >= 0 ) {
+			this.selected.splice( id, 1 );
+			this.animate();
+		}
+	}
+
+
 
 
 	handleRoll( space ) {
+		if( this.allowPlay ) {
+			this.clearHighlight( space );
+			protocol.sendRoll();
+			
+		}
 	}
+
 	handleSellStocks( space ) {
 	}
 	handleQuit( space ) {
 	}
 	handleSell( space ) {
+		this.setCurrent( space );
 	}
-	handlePay( space ) {
+	handlePay( space, stock ) {
+		this.setCurrent( space,stock );
 	}
 	handleStart( space ) {
+		this.setCurrent( space );
 	}
 	handleBroker( space ) {
+		this.setCurrent( space );
 	}
 	handleSpace( space ) {
+		this.setCurrent( space );
 	}
 
 	handleSplit( space ) {
+		this.setCurrent( space );
 	}
 }
 
@@ -178,36 +351,62 @@ class BoardSpace extends StockSpace {
 	timer = 0;
 	state = 0;
 
-	drawHover( ctx ) {
-			ctx.shadowBlur = 120;
-			ctx.shadowColor = "green";
-			ctx.strokeStyle = "gold";
-			ctx.lineWidth = 8;
-			ctx.fillStyle="#33333330";
 
-		ctx.strokeRect( xScale(this.position[0]), yScale(this.position[1]),xScale(this.size[0]), yScale(this.size[1]) );
-		ctx.fillRect( xScale(this.position[0]), yScale(this.position[1]),xScale(this.size[0]), yScale(this.size[1]) );
+	drawCurrent( ctx ) {
+		if( this.state ) {
+			ctx.shadowBlur = 60;
+			ctx.shadowColor = "#ee33cc";
+		}
+		
+			ctx.strokeStyle = "#ee33cc";
+			ctx.lineWidth = 8;
+			ctx.fillStyle="#ee33cc";
+
+		this.drawBorder(ctx);
+
+	}
+
+	drawBorder( ctx ) {
+		ctx.strokeRect( -xScale(0.05)+xScale(this.position[0]), yScale(this.position[1]),xScale(0.1), yScale(this.size[1]) );
+		ctx.fillRect( -xScale(0.05)+xScale(this.position[0]), yScale(this.position[1]),xScale(0.1), yScale(this.size[1]) );
+
+
+		ctx.strokeRect( xScale(this.position[0]), -yScale(0.05)+yScale(this.position[1]),xScale(this.size[0]), yScale(0.1) );
+		ctx.fillRect( xScale(this.position[0]), -yScale(0.05)+yScale(this.position[1]),xScale(this.size[0]), yScale(0.1) );
+
+		ctx.strokeRect( -xScale(0.05)+xScale(this.position[0]+this.size[0]), yScale(this.position[1]),xScale(0.1), yScale(this.size[1]) );
+		ctx.fillRect( -xScale(0.05)+xScale(this.position[0]+this.size[0]), yScale(this.position[1]),xScale(0.1), yScale(this.size[1]) );
+
+		ctx.strokeRect( xScale(this.position[0]), -yScale(0.05)+yScale(this.position[1]+this.size[1]),xScale(this.size[0]), yScale(0.1) );
+		ctx.fillRect( xScale(this.position[0]), -yScale(0.05)+yScale(this.position[1]+this.size[1]),xScale(this.size[0]), yScale(0.1) );
+	}
+
+	drawHover( ctx ) {
+			ctx.shadowBlur = 60;
+			ctx.shadowColor="#44aa99";
+			ctx.strokeStyle="#44aa99";
+			ctx.lineWidth = 8;
+			ctx.fillStyle="#44aa99";
+
+		this.drawBorder(ctx);
 
 	}
 
 	drawHighlight( change, ctx ) {
-		if( change )
-			this.state = 1-this.state;
 		if( this.state ) {
-			ctx.shadowBlur = 120;
+			ctx.shadowBlur = 60;
 			ctx.shadowColor = "gold";
 			ctx.strokeStyle = "gold";
 			ctx.lineWidth = 8;
-			ctx.fillStyle="#33333330";
+			ctx.fillStyle="#eecc00";
 		} else {
 			ctx.shadowBlur = 0;
 			ctx.shadowColor = null;
-			ctx.strokeStyle = "red";
+			ctx.strokeStyle = "#aa8800";
 			ctx.lineWidth = 8;
-			ctx.fillStyle="transparent";
+			ctx.fillStyle="#aa8800";
 		}
-		ctx.strokeRect( xScale(this.position[0]), yScale(this.position[1]),xScale(this.size[0]), yScale(this.size[1]) );
-		ctx.fillRect( xScale(this.position[0]), yScale(this.position[1]),xScale(this.size[0]), yScale(this.size[1]) );
+		this.drawBorder(ctx);
 
 	}
 

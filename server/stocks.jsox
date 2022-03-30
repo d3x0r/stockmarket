@@ -1,9 +1,7 @@
 {
-	common:{
 		linkedSliders:true,
 		stages:25,
 		secondStagingStarts : 5
-	}
 	,stocks:[
 		{
 			stock: "Alcoa"

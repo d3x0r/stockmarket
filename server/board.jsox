@@ -1,6 +1,8 @@
 {
 rollRandom: true,
-
+minCash:1000,
+startFee: 100, // per landing
+brokerFee: 10, // per share
 spaces:[
 
 	{id: 100,
@@ -49,7 +51,7 @@ spaces:[
 	        sellStocks:true,
 	},
 	
-	{id: 0,
+	{id: 48,
 		size: [2,2],
 		align:"vertical up",
 		position: [0,12],
@@ -64,7 +66,7 @@ spaces:[
 		market: 1,
 		stock: 3 ,
 		left: 2  ,
-		right: 0 ,
+		right: 48 ,
 		leaveLeft:true
 	},
 	{id: 2,
@@ -527,7 +529,7 @@ spaces:[
 		position: [0,14],
 		   stock: 6,
 		   leaveLeft:true,
-		   left: 0,
+		   left: 48,
 	   right: 46,
 	   market: +1,
 	
