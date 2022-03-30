@@ -10,9 +10,34 @@ import {Events} from "./events.js";
 class GameState extends Events {
 	board = null;
 	stocks = null;
+	players = null;
+	username = null;
+	game = null;
 	events = new Events();
 }
 
+export function sendNoSale() {
+	send( {op:"no-sale" } );
+}
+
+export function sendBuy( stock, shares ) {
+	send( {op:"buy", stock:stock.id, shares } );
+}
+
+export function sendSpace( id, stock ) {
+	send( {op:"space", space:id, stock:stock } );
+}
+
+export function sendRoll() {
+	send( {op:"roll" } );
+}
+
+export function sendReady() {
+	send( {op:"ready" } );
+}
+export function sendUnready() {
+	send( {op:"unready" } );
+}
 
 export function joinGame( name ) {
 	send( {op:"join", name:name } );
@@ -23,7 +48,7 @@ export function createGame( name ) {
 }
 
 export function	sendUserName( name )  {
-
+	gameState.username = name;
 	send( {op:"username", name:name } );
 }
 
@@ -86,9 +111,25 @@ function parseMessage( ws, msg ) {
 	case "data":
 		gameState.board = msg.board;
 		gameState.stocks = msg.stocks;
+		gameState.game = msg.game;
+		gameState.players = msg.game.users;
+		
 		//gameEvents = new Events();
 		gameEvents.on( "load" );
 		break;
+	case "market":
+		gameState.game.marketLine = msg.line;
+		// allow UI to get triggered to read new value... (it shouldn't use msg...)
+		gameEvents.on( msg.op, null );
+		break;
+	case "player":
+		{
+			const old = gameState.players.find( player=>player.name===msg.user.name );
+			if( !old ) {
+				gameState.players.push( msg.user );
+			}
+		}
+		/* fallthrough */
 	default: // just make everything dispatched to callbacks.
 		gameEvents.on( msg.op, msg );
 		break;

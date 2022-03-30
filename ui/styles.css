@@ -196,3 +196,57 @@
 .frameForm {
 	font-size:250%;
 }
+
+
+.game-player-list {
+	font-size:300%;
+	min-width:50%;
+}
+
+[class^="stock-buy"] {
+	font-size:125%;
+	text-align:center;
+	color:white;
+}
+
+.formContainer-buy {
+	background:#799;
+}
+
+[class^="stock-buy-button"] {
+			font-size:100%;
+			border-radius:10px;
+			background:linear-gradient(rgb(118 131 92), #e2d38b,rgb(88 102 59) );
+			padding:0px;
+			height:3em;
+			min-width:4em;
+			display:inline-block;
+			border-style:outset;
+			padding-right:2px;
+			padding-bottom:2px;
+}
+
+[class^="stock-buy-inner-button"] {
+	border-radius:10px;
+	background:darkgreen;
+	text-align:center;
+	margin:5px;
+	height:75%;
+	line-height:175%;
+	margin-left:0.25em;
+	margin-right:0.25em;
+	border-style:ridge;
+	color:white;
+}
+
+[class^="stock-buy-inner-button-disable"] {
+	background: darkred;
+}
+
+[class^="stock-buy-inner-button-enable"] {
+	background: darkgreen;
+}
+
+
+
+
