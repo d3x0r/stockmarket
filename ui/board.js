@@ -1,11 +1,25 @@
 
 import {JSOX} from "/node_modules/jsox/lib/jsox.mjs";
+
 const tokenInfo = await fetch( "./images/tokens.jsox" ).then( data =>{
 	return data.text().then( text=>{
 		return JSOX.parse(text );
 	} )
 } );        
 
+const tokens = document.createElement( "img" );
+tokens.src = "./images/"+tokenInfo.lowres.name;
+
+const tokenSpots = [];
+for( let x = 0; x < 4; x++ ) for( let y = 0; y < 2; y++ )  {
+	tokenSpots.push( {x: x*tokenInfo.lowres.width/4, y:y*tokenInfo.lowres.height/2} );
+}
+
+export const tokenShare = {
+	tokenInfo,
+	tokens,
+	tokenSpots,
+}
 
 import * as protocol from "./gameProtocol.js"
 import {GameWait} from "./gameWait.js" 
@@ -46,6 +60,9 @@ export class GameBoard extends Popup {
 	}
 	constructor(form) {
 		super( "Stock Market", form );
+
+		const game = protocol.gameState.game;
+		this.currentPlayer = game.users[game.currentPlayer];
         
 		this.gameAlert.hide();
 		const gameBoard = this.gameBoard = document.createElement( "canvas" );
@@ -78,8 +95,6 @@ export class GameBoard extends Popup {
 	        this.sellForm = new SellForm( this );
 
 
-		const game = protocol.gameState.game;
-		const gameCurrentPlayer = game.users[game.currentPlayer];
 		const players = protocol.gameState.players;
 		let inProgress = true;
 
@@ -91,7 +106,7 @@ export class GameBoard extends Popup {
 		}
 
 
-		if( thisPlayer.name === gameCurrentPlayer.name ) {
+		if( thisPlayer.name === this.currentPlayer.name ) {
 			this.board.allowPlay = true;
 			this.board.addHighlight( this.board.roll );
 		}
@@ -113,7 +128,7 @@ export class GameBoard extends Popup {
 			this.board.allowPlay = true;
 			if( !waiterHidden ) {
 				waiterHidden = true;
-				gameWaiter.hide();
+				if( gameWaiter ) gameWaiter.hide();
 			}
 		} );
 		protocol.on( "roll", (msg)=>{
@@ -122,14 +137,17 @@ export class GameBoard extends Popup {
 		protocol.on( "turn", (msg)=>{
 			if( !waiterHidden ) {
 				waiterHidden = true;
-				gameWaiter.hide();
+				if( gameWaiter ) gameWaiter.hide();
 			}
 			this.currentPlayer = protocol.gameState.players.find( player=>player.name === msg.name );
-			if( this.currentPlayer.name === protocol.gameState.username ) {
-				this.board.addHighlight( this.board.roll );
-				this.gameAlert.show( "It's your turn..." );
-			}else
-				this.gameAlert.show( "It's " + this.currentPlayer.name + "'s turn..." );
+			if( !this.currentPlayer ) 
+				if( this.currentPlayer.name === protocol.gameState.username ) {
+					this.board.addHighlight( this.board.roll );
+					this.gameAlert.show( "It's your turn..." );
+				}else
+					this.gameAlert.show( "It's " + this.currentPlayer.name + "'s turn..." );
+			else
+				console.log( "Game thinks current player is someone I don't know... (no turns available)." );
 		} );
 		protocol.on( "start", (msg)=>{
 			// this should include the player turn order too.
@@ -180,6 +198,47 @@ export class GameBoard extends Popup {
 		this.gameBoardOverlay.addEventListener( "mousedown", (evt)=>this.mousedown(event) );
 	}
 
+	show(  ) {
+		this.board.sweepTokens();
+		
+		const game = protocol.gameState.game;
+		this.currentPlayer = game.users[game.currentPlayer];
+
+		const players = protocol.gameState.players;
+		let inProgress = true;
+
+		let thisPlayer;
+		for( let player of players ) {
+			if( player.name === protocol.gameState.username ) 
+				thisPlayer = player;
+			if( !player.space ) inProgress = false;
+		}
+
+
+		if( thisPlayer.name === this.currentPlayer.name ) {
+			this.board.allowPlay = true;
+			this.board.addHighlight( this.board.roll );
+		}
+
+		if( !inProgress ) {
+			if( !gameWaiter ) gameWaiter = new GameWait( this );
+			else              gameWaiter.reset();
+		}
+		else
+			if( thisPlayer ) {
+				// I should be a player, but for my player, find my space, and set it current in the board
+				// otherwise it's a new game... this should also be 'inProgress'
+				const playerSpace = this.board.spaces.find( space=>space.id===thisPlayer.space );
+		        
+				this.board.currentSpace = playerSpace;		
+
+			}
+
+
+		console.log( "Reload game data" );
+	debugger;
+		super.show();
+	}
 
 	mousedown(evt){
 		if( this.isIn ) {
@@ -207,19 +266,21 @@ export class GameBoard extends Popup {
 				xr <= ( space.position[0]+space.size[0] ) && yr <= ( space.position[1]+space.size[1] ) )?sel:null;
 		};
 		this.isIn = this.board.selected.find( isIn );
+		if( !this.isIn )
+			if( this.isIn = isIn( this.board.sell ) ) {
+			} else if( this.isIn = isIn( this.board.quit ) ) {			
+			}
 		if( this.isIn ) {
 			this.board.setActive( this.isIn.space, this.isIn.stock );
-		}
-		else if( this.isIn = isIn( this.board.sell ) ) {
-		} else if( this.isIn = isIn( this.board.quit ) ) {
-			
-		}
+		}else			this.board.setActive( null, null );
+
 		
 	}
 }
 
 
 export class Board {
+	stopped = false;
 	spaces = [];
 	random = true;
 	stocks = [];
@@ -239,6 +300,7 @@ export class Board {
 	timer = null;
 	canSell = false;
 	#gameBoard = null;
+	tokens = [];
 
 	constructor( board, stocks, ctx, gameBoard ) {
 		this.ctx = ctx;
@@ -246,6 +308,7 @@ export class Board {
 		stocks.stocks.forEach( stock=>{
 			this.stocks.push( new Stock( protocol.gameState.game, stock) );	
 		} );
+		
 		board.spaces.forEach( (space)=>new BoardSpace( this, space ) );		
 		this.spaces.forEach( space=>{
 			if( space.roll) this.roll = space;
@@ -253,9 +316,13 @@ export class Board {
 			if( space.job) this.jobs.push( space );
 			if( space.quit) this.quit.space = space;
 			if( space.sellStocks) this.sell.space = space;
+			if( space.id === gameBoard.currentPlayer.space ) this.setCurrent( space, null );
 		} );
 		//this.waiter = new GameWait( this );
-		this.jobs.forEach( job=>this.addHighlight( job ) );
+		if( !gameBoard.currentPlayer.space ) 
+			this.jobs.forEach( job=>this.addHighlight( job ) );
+		
+		//this.jobs.forEach( job=>this.addHighlight( job ) );
 	}
 
 	setCurrent(space,stock) {
@@ -285,6 +352,39 @@ export class Board {
 
 	addToken( user, space ) {
 		console.log( "Player is now moved...", user.name, space.id );
+		let next = -1;;
+		let cur = -1;
+		if( user.space != space.id ){
+			for( let t = 0; t < this.tokens.length; t++ )  {
+				const tokenList = this.tokens[t];
+				if( tokenList.id === space.id ) {
+					next = t;
+				}
+				if( tokenList.id === user.space ) {
+					cur = t;
+				}
+			}
+		}
+		if( next < 0 ) {
+			this.tokens.push( {id:space.id,users:[user]} );
+		}else{
+			this.tokens[next].users.push( user );
+		}
+			
+		if( cur >= 0 ) {	
+			const list = tokenList.users;
+			for( let u = 0; u < list.length; u++ ) {
+				const us = list[u];
+				if( us === user ) {
+					list.splice( u, 1 );
+					break;
+				}
+			}
+			if( list.length === 0 )
+				this.tokens.splice( cur, 1 );
+		}
+
+		user.space = space.id;
 	}
 
 	draw( ctx ) {
@@ -294,18 +394,28 @@ export class Board {
 	}
 
 
+	sweepTokens() {
+		this.tokens.length = 0;
+	}
 	animate(n) {
-		if( !this.timer )
-			this.timer = setTimeout(  ()=>{
-				this.timer = 0;
-				this.state = 1-this.state;
-				this.animate( true )
-			}, 500 );
-		
+		if( !this.timer ) {
+			if( !this.stopped )
+				this.timer = setTimeout(  ()=>{
+					this.timer = 0;
+					this.state = 1-this.state;
+					this.animate( true )
+				}, 500 );
+		}		
+
+
 		this.ctx.clearRect( 0, 0, 4096, 4096 );
+
+
 		this.selected.forEach( sel=>{const space=sel.space; if( space === this.hover || space == this.currentSpace ) return; space.state=this.state; space.drawHighlight( n, this.ctx ) });
 
 		if( this.currentSpace ) {
+			if( tokens.width )
+				this.currentSpace.drawToken( this.ctx, 5, 0 );
 			this.currentSpace.state=this.state;
 			this.currentSpace.drawCurrent( this.ctx );
 		}
@@ -392,6 +502,13 @@ class BoardSpace extends StockSpace {
 	state = 0;
 
 
+	drawToken( ctx, n, m ) {
+		const spot = tokenSpots[n];
+		ctx.drawImage( tokens
+				, spot.x, spot.y, tokenInfo.lowres.width/4,tokenInfo.lowres.height/2
+				, xScale( this.position[0]+this.size[0]/10 ), xScale( this.position[1]+this.size[1]*6/8 ), xScale( this.size[0]/4 ), yScale( this.size[0]/4 ) );
+	}
+
 	drawCurrent( ctx ) {
 		if( this.state ) {
 			ctx.shadowBlur = 60;
@@ -451,18 +568,20 @@ class BoardSpace extends StockSpace {
 
 	}
 	drawQuit( ctx ) {
-		if( !this.state ) {
-			ctx.shadowBlur = 60;
+		
+/*		if( !this.state ) {
+			ctx.shadowBlur = 0;
 			ctx.shadowColor="#44aa99";
 			ctx.strokeStyle="#44aa99";
 			ctx.lineWidth = 8;
 			ctx.fillStyle="#44aa99";
-		}else {
+		}else */
+		{
 			ctx.shadowBlur = 0;
 			ctx.shadowColor = null;
-			ctx.strokeStyle = "#aa8800";
+			ctx.strokeStyle = "#025";
 			ctx.lineWidth = 8;
-			ctx.fillStyle="#aa8800";
+			ctx.fillStyle="#025";
 		}
 
 		this.drawBorder(ctx);

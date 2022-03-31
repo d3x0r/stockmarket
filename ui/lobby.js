@@ -58,8 +58,20 @@ export class Lobby extends Popup {
 		this.center();
 		
 	}
-	addUser( user ) {
+	reload( msg ) {
+		while( this.game_rows.length ) this.dropGame( this.game_rows[0].game.name )
+		while( this.user_rows.length ) this.dropUser( this.user_rows[0].user )
+		msg.lobby.forEach( user=>this.addUser(user ) );
+		msg.rooms.forEach( game=>this.addGame( game ) );
 
+		if( !msg.rooms.length )
+			this.addGame( {name: "--- No Games---- "} );
+		this.show();
+		this.center();
+	}	
+
+	addUser( user ) {
+		if( !user ) return;
 		const row = document.createElement( "div" );
 		this.user_rows.push( {row:row, user:user});
 		row.style.display = "table-row";
@@ -79,7 +91,7 @@ export class Lobby extends Popup {
 	}
 
 	addGame( game ) {
-
+		if( !game ) return;
 		const row = document.createElement( "div" );
 		this.game_rows.push( {row:row, game:game});
 		row.style.display = "table-row";
@@ -102,84 +114,4 @@ export class Lobby extends Popup {
 			realGame[0].row.remove();
 		}
 	}
-}
-
-
-
-function oldSelectList() {
-	const selector = new popups.create( "Select World", app );
-	const rows = [];
-
-	selector.addWorld = addWorld;
-	selector.delWorld = delWorld;
-
-	function delWorld( world ) {
-		for( let row of rows ) {
-			if( row.world.name === world.name ) {
-				console.log( "Delete world?" );
-				row.row.remove();
-				break;
-			}
-		}
-	}
-
-	function addWorld( world ) {
-		const row = document.createElement( "div" );
-		rows.push( {row:row, world:world});
-		row.style.display = "table-row";
-		const name = document.createElement( "span" );
-		name.textContent = world.name;
-		name.style.display = "table-cell";
-		row.appendChild( name );
-
-		const delWorld = popups.makeButton( row, "X", ((world)=>()=>{
-			row.remove();
-				openGameSocket( );
-			//selector.deleteItem( row );
-			l.ws.send( JSOX.stringify( {op:'deleteWorld', world:world, user:localStorage.getItem( "userId" ) || "AllowMe" } ) );
-			//selector.hide();
-		})(world) );
-		delWorld.style.display = "table-cell";
-		delWorld.style.float = "right";
-
-
-		const open = popups.makeButton( row, "Open", ((world)=>()=>{
-			l.ws.send( JSOX.stringify( {op:'world', world:world } ) );
-			selector.hide();
-		})(world) );
-		open.style.display = "table-cell";
-		open.style.float = "right";
-
-		selector.appendChild( row );
-
-	}
-	for( let world of worldList ) {
-		addWorld( world );
-	}
-
-	{
-		const row = document.createElement( "div" );
-		const name = document.createElement( "span" );
-		name.textContent = "New World";
-		name.style.display = "table-cell";
-		row.style.display = "table-row";
-		row.appendChild( name );
-		const open = popups.makeButton( row, "New", ()=>{
-			selector.hide();
-			const question = popups.simpleForm( "Enter new world name", "Name:", "My World", (val)=>{
-				l.ws.send( JSOX.stringify( {op:'create', sub:"world", name:val } ) );
-				question.remove();
-				//selector.remove();
-			}, ()=>{
-			} );
-			question.show();
-		} );
-		open.style.display = "table-cell";
-		open.style.float = "right";
-		selector.appendChild( row );
-	}
-
-	selector.show();
-	return selector;
-
 }

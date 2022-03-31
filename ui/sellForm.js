@@ -138,8 +138,8 @@ export class SellForm extends Popup {
 			this.hide();
 			protocol.sendNoSale();
 		} );
-		 this.center();
-		//this.hide();
+		this.center();
+		this.hide();
         }
 
 	show( player, stock, forced ) {
