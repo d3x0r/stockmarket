@@ -65,7 +65,8 @@ export class GameWait extends Popup {
 		const row = document.createElement( "div" );
 		row.style.display = "table-row";
 		const name = document.createElement( "span" );
-		if( player )
+		const isMe = ( !player ) || ( player.name === protocol.gameState.username );
+		if( !isMe )
 			name.textContent = player.name;
 		else
 			name.textContent = "You";
@@ -74,14 +75,16 @@ export class GameWait extends Popup {
 		row.appendChild( name );
 
 		const statusField = document.createElement( "span" );
-		
-		if( player.inPlay ){
-			statusField.textContent = "Ready";
-			statusField.style.color = "green";
-		}
-		else {
-			statusField.innerText = "not ready...";
-			statusField.style.color = "red";
+		if( player ) {
+			if( player.inPlay ){
+				statusField.textContent = "Ready";
+				statusField.style.color = "green";
+				if( isMe ) this.hide();
+			}
+			else {
+				statusField.innerText = "not ready...";
+				statusField.style.color = "red";
+			}
 		}
 		statusField.style.display = "table-cell";
 		statusField.style.float = "right";

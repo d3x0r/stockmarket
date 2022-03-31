@@ -305,7 +305,7 @@ class Game {
 		this.currentPlayer++;
 		if( this.currentPlayer >= this.users.length )
 			this.currentPlayer = 0;
-		const msg=JSOX.stringify( {op:"turn", name:this.users[this.currentPlayer].name } );
+		const msg=JSOX.stringify( {op:"turn", name:this.users[this.currentPlayer].name, current:this.currentPlayer } );
 		for( let user of this.users ) {
 			user.queue.push( msg );
 		}
@@ -343,7 +343,7 @@ class User {
 		this.inPlay = val; // sort of a duplicate ready status that is returned on state reload.
 		if( val ) {
 			this.#ready = true;
-			if( this.#game ) {
+			if( this.#game && ( !this.#game.inPlay ) ) {
 				for( let user of this.#game.users ) {
 					if( !user.ready ) return;
 				}
@@ -354,7 +354,11 @@ class User {
 				}
 		
 				this.#game.pickStart();
-			}			
+			} else {
+				const msg=JSOX.stringify( {op:"turn", name:this.#game.users[this.#game.currentPlayer].name, current:this.#game.currentPlayer } );
+				this.ws.send( msg ); // inform of current turn.
+				
+			}
 		} else {
 			this.#ready = false;
 		}
@@ -411,6 +415,7 @@ class User {
 	}
 
 	roll() {
+	
 		return this.game.roll(this);
 	}
 
@@ -462,6 +467,51 @@ class User {
 			peer.ws.send( {op:"money", user:user.name, cash:val } );
 		}
 	}
+
+	quit() {
+
+		if( this.#game ) {
+			const partGame = JSOX.stringify( {op:"quit", user:this.name } );
+			const peers = this.#game.users;
+			let pid = -1;
+			for( let p = 0; p < peers.length; p++ ) {
+				const peer = peers[p];
+				if( peer === this ) {
+					if( p === this.#game.currentPlayer ) {
+						this.#game.turn();
+					}
+					pid = p;
+					continue;
+				}
+				peer.ws.send( partGame );
+			}
+			// fix next current player.
+			if( this.#game.currentPlayer > pid ) this.#game.currentPlayer--;
+			// removed from game, and game removed from this...
+			peers.splice( pid, 1 );
+			if( !peers.length ) {
+				// when there's no more players in the game, delete it.
+				games.delete( this.#game.name );
+				const msg = JSOX.stringify( {op:"delete", game:this.#game.name } );
+				for( let player of lobby.users ) {
+					player.ws.send( msg );
+				}
+				const gameId = lobby.games.findIndex( game=>game === this.#game );
+				if( gameId >= 0 ) {
+					lobby.games.splice( gameId, 1 );
+				}
+			}
+			
+			this.#game = null;
+			/* reset player */
+			this.inPlay = false;
+			this.space = 0;
+			this.cash = 1000;
+			this.stocks.forEach( stock=>stock.shares = 0 );
+			
+			joinLobby( this );
+		}
+	}
 	
 }
 
@@ -494,13 +544,13 @@ export function accept( ws ) {
 };
 
 
-
+let joinLobby = null;
 
 function getHandler( ws ) {
 	const parser = JSOX.begin( dispatchMessage );
 	
 	let user = null;
-
+	joinLobby = joinLobby_
 	return parser.write.bind( parser );
 
         
@@ -525,11 +575,9 @@ function getHandler( ws ) {
 				users.set( msg.name, user );
 				user.ws = ws;
 
-				joinLobby( user )
 			}
+			joinLobby_( user )
 			
-			const msgout = JSOX.stringify( { op:'lobby', lobby:lobby.users, rooms:lobby.games } ); 
-			ws.send( msgout );
 			break;
 		case 'buy':
 			{
@@ -538,20 +586,7 @@ function getHandler( ws ) {
 			}
 			break;
 		case 'quit':
-			{
-				const partGame = JSOX.stringify( {op:"quit", user } );
-
-				const userId = user.game.users.findIndex( u=>u===user );
-				if( userId >= 0 ) {
-					user.game.users.splice( userId,1 );
-					
-				}
-				// after leaving the game, tell the remaining guys someone quit.
-				user.game.users.forEach( user=>user.ws.send( partGame ) );
-
-				user.game = null;
-				joinLobby( user );
-			}
+			user.quit();
 			break;
 
 		case 'roll':
@@ -647,11 +682,15 @@ function getHandler( ws ) {
 		} );
 
 	}
-	function joinLobby( user ) {
-		const newMsg = JSOX.stringify( {op:'user',user:user} );
-		lobby.users.forEach( user=>{
-			user.ws.send(newMsg );
-		});
-		lobby.users.push( user );
+	function joinLobby_( user_ ) {
+		
+		//while in a game, the users and games isn't updated... so send the current list.
+		if( !lobby.users.find( u=>u===user_ ) ) {
+			const newMsg = JSOX.stringify( {op:'user',user:user} );
+			lobby.users.forEach( user=> user.ws.send(newMsg ) );
+			lobby.users.push( user );
+		}
+		const msgout = JSOX.stringify( { op:'lobby', lobby:lobby.users, rooms:lobby.games } ); 
+		user_.ws.send( msgout );
 	}
 }

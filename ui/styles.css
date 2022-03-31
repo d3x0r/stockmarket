@@ -249,4 +249,156 @@
 
 
 
+[class^="stock-sell"] {
+	font-size:125%;
+	text-align:center;
+	color:white;
+}
+
+.formContainer-sell {
+	background:#977;
+}
+
+[class^="stock-sell-button"] {
+			font-size:100%;
+			border-radius:10px;
+			background:linear-gradient(rgb(118 131 92), #e2d38b,rgb(88 102 59) );
+			padding:0px;
+			height:3em;
+			min-width:4em;
+			display:inline-block;
+			border-style:outset;
+			padding-right:2px;
+			padding-bottom:2px;
+}
+
+[class^="stock-sell-inner-button"] {
+	border-radius:10px;
+	background:darkgreen;
+	text-align:center;
+	margin:5px;
+	height:75%;
+	line-height:175%;
+	margin-left:0.25em;
+	margin-right:0.25em;
+	border-style:ridge;
+	color:white;
+}
+
+[class^="stock-sell-inner-button-disable"] {
+	background: darkred;
+}
+
+[class^="stock-sell-inner-button-enable"] {
+	background: darkgreen;
+}
+
+.formContainer-stock {
+	background:#775;
+	color:#ff9;
+}
+
+.frameContent-stock {
+	font-size:100%;
+	font-family:monospace;
+
+}
+
+.stock-table {
+	display:table;
+}
+
+[class^="stock-label"] {
+	display:table-cell;	
+	padding-left:1em;	
+	padding-right:1em;	
+}
+
+[class^="stock-symbol"] {
+	display:table-cell;	
+	padding-left:1em;	
+	padding-right:1em;	
+}
+[class^="stock-price"] {
+	display:table-cell;
+	width:5em;
+	text-align:center;
+}
+[class^="stock-row"] {
+	display:table-row;	
+	background:#555;
+}
+
+[class$="-ALCA"] {
+	border-color:#fc482c;
+	
+	border-width:4px;
+	border-style:solid;
+	#border-right-style:none;
+}
+
+[class$="-AMER"] {
+	border-color:#fbd25d;
+	
+	border-width:4px;
+	border-style:solid;
+	#border-right-style:none;
+}
+
+[class$="-JICS"] {
+	border-color:#fca43c;
+	
+	border-width:4px;
+	border-style:solid;
+	#border-right-style:none;
+}
+
+[class$="-GEMI"] {
+	border-color:#4c28d2;
+	
+	border-width:4px;
+	border-style:solid;
+	#border-right-style:none;
+}
+
+
+[class$="-INTS"] {
+	border-color:#f44983;
+	
+	border-width:4px;
+	border-style:solid;
+	#border-right-style:none;
+}
+
+[class$="-MYTG"] {
+	border-color:#37864e;
+	
+	border-width:4px;
+	border-style:solid;
+	#border-right-style:none;
+}
+
+[class$="-WSTP"] {
+	border-color:#b4b126;
+	
+	border-width:4px;
+	border-style:solid;
+	#border-right-style:none;
+}
+
+[class$="-WLWR"] {
+	border-color:#a68100;
+	
+	border-width:4px;
+	border-style:solid;
+	#border-right-style:none;
+}
+
+
+         /*
+			, color: "#fc482c"
+			, color: "#fbd25d"
+        		, color: "#fca43c"
+			, color: "#4c28d2"
+	*/
 
