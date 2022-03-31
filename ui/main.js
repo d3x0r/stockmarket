@@ -22,6 +22,8 @@ export function go() {
 
 	let login = null;
 	let lobby = null;
+
+	let oldGame = null;
         
 	const useform = document.body;
 	
@@ -40,11 +42,19 @@ export function go() {
 
 	protocol.on( "lobby", (msg)=>{
 		//console.log( "lobby handler?", msg );
-		lobby = new Lobby( form, msg, login?.username || user );
+		if( !lobby )
+			lobby = new Lobby( form, msg, login?.username || user );
+		else
+			lobby.reload( msg );
 	});
-	protocol.on( "load", (data)=>{
+	protocol.on( "load", ()=>{
 		//console.log( "loadGame handler?", data );
-		loadGameForm( form, protocol );
+		if( oldGame ) {
+			// will re-init the board instead? it's still the same game?
+			oldGame.show();
+		}
+		else 
+			oldGame = new GameBoard( form, protocol );
 		// lobby.remove(); ??
 		if(lobby) // might have skipped the lobby step altogether
 			lobby.hide();
@@ -64,20 +74,6 @@ export function go() {
 
 	} );
 
-
-	let oldGame = null;
-
-	function loadGameForm(form, events) {
-		// on reconnect, we're going to potentially have a different game data...
-		if( oldGame ) {
-			// re-init the board instead? it's still the same game?
-			oldGame.show();
-			return;
-		}
-		
-		oldGame = new GameBoard( form, events );
-        	
-	}
 
 
 }

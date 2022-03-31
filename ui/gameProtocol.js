@@ -17,6 +17,10 @@ class GameState extends Events {
 	events = new Events();
 }
 
+export function sendColor(n) {
+	send( {op:"color", color:n } );
+}
+
 export function sendQuit() {
 	send( {op:"quit" } );
 }

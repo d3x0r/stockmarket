@@ -329,6 +329,7 @@ class User {
 	movingLeft = true;
 	inPlay = false;
 	meeting = 0;
+	color = Math.floor(Math.random()*8);
 
 	#queue = [];
 	#ws = null;
@@ -476,13 +477,14 @@ class User {
 			let pid = -1;
 			for( let p = 0; p < peers.length; p++ ) {
 				const peer = peers[p];
-				if( peer === this ) {
-					if( p === this.#game.currentPlayer ) {
-						this.#game.turn();
+				if( peers.length > 1 )
+					if( peer === this ) {
+						if( p === this.#game.currentPlayer ) {
+							this.#game.nextTurn();
+						}
+						pid = p;
+						continue;
 					}
-					pid = p;
-					continue;
-				}
 				peer.ws.send( partGame );
 			}
 			// fix next current player.
@@ -555,7 +557,7 @@ function getHandler( ws ) {
 
         
         function dispatchMessage(msg) {
-	//try {
+	try {
 	        switch( msg.op ) {
 		case "username":
 			const oldUser = users.get( msg.name );
@@ -604,6 +606,18 @@ function getHandler( ws ) {
 				}	
 			}
 			break;
+		case "color": {
+				user.color = msg.color;
+				if( user.game ) {
+					const msgout = JSOX.stringify( {op:"color", name:user.name, color:msg.color } );
+					for( let player of user.game.users ) {
+						if( user === player ) continue;
+						// tell everyone else in the game about the color change...
+						player.ws.send( msgout );
+					}
+				} 
+			}
+			break;
 		case "ready": {
 				user.ready = true;
 				const rdy = JSOX.stringify( { op:"ready", user:user } );
@@ -650,7 +664,7 @@ function getHandler( ws ) {
 			break;
 	        }
 		
-	//}catch(err){ console.log( "MessageError:", err);        
+	}catch(err){ console.log( "MessageError:", err);        }
         }
 
 	function joinGame(user, game) {
@@ -686,9 +700,9 @@ function getHandler( ws ) {
 		
 		//while in a game, the users and games isn't updated... so send the current list.
 		if( !lobby.users.find( u=>u===user_ ) ) {
-			const newMsg = JSOX.stringify( {op:'user',user:user} );
-			lobby.users.forEach( user=> user.ws.send(newMsg ) );
-			lobby.users.push( user );
+			const newMsg = JSOX.stringify( {op:'user',user:user_} );
+			lobby.users.forEach( user=>user.ws.send(newMsg ) );
+			lobby.users.push( user_ );
 		}
 		const msgout = JSOX.stringify( { op:'lobby', lobby:lobby.users, rooms:lobby.games } ); 
 		user_.ws.send( msgout );
