@@ -11,10 +11,16 @@ class GameState extends Events {
 	board = null;
 	stocks = null;
 	players = null;
+	currentPlayer = null;
 	username = null;
 	game = null;
 	events = new Events();
 }
+
+export function sendQuit() {
+	send( {op:"quit" } );
+}
+
 
 export function sendNoSale() {
 	send( {op:"no-sale" } );
@@ -121,6 +127,17 @@ function parseMessage( ws, msg ) {
 		gameState.game.marketLine = msg.line;
 		// allow UI to get triggered to read new value... (it shouldn't use msg...)
 		gameEvents.on( msg.op, null );
+		break;
+	case 'turn':
+	case 'start':
+		for( let player of gameState.game.users ) {
+			if( player.name === msg.name) {
+				gameState.currentPlayer = player;
+				break;
+			}
+		}
+		gameState.game.currentPlayer = msg.current;
+		gameEvents.on( msg.op, msg );
 		break;
 	case "player":
 		{

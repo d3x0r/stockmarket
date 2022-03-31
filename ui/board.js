@@ -1,20 +1,30 @@
 
+import {JSOX} from "/node_modules/jsox/lib/jsox.mjs";
+const tokenInfo = await fetch( "./images/tokens.jsox" ).then( data =>{
+	return data.text().then( text=>{
+		return JSOX.parse(text );
+	} )
+} );        
+
 
 import * as protocol from "./gameProtocol.js"
 import {GameWait} from "./gameWait.js" 
 import {Stock} from "./stock.mjs" 
 import {BuyForm} from "./buyForm.js"
+import {SellForm} from "./sellForm.js"
+import {StockForm} from "./stockForm.js"
 import {StockSpace} from "./stockSpace.mjs" 
 import {Popup,popups} from "/node_modules/@d3x0r/popups/popups.mjs"
 
 let gameWaiter = null;
+let waiterHidden = false;
 
 // gameBoard is the form containing the game canvases.
 // contexts are contexts for game canvases...
 function makeGameBoard( gameBoard, ctx, overlayCtx ) {
 	const gameState = protocol.gameState;
 
-	const board = new Board( gameState.board, gameState.stocks, overlayCtx );
+	const board = new Board( gameState.board, gameState.stocks, overlayCtx, gameBoard );
 	
 	board.draw( ctx );
 
@@ -37,9 +47,6 @@ export class GameBoard extends Popup {
 	constructor(form) {
 		super( "Stock Market", form );
         
-
-		this.buyForm = new BuyForm( this );
-	
 		this.gameAlert.hide();
 		const gameBoard = this.gameBoard = document.createElement( "canvas" );
 		gameBoard.width = 4096;
@@ -64,6 +71,11 @@ export class GameBoard extends Popup {
 		this.appendChild( this.gameBoard );
 		this.appendChild( this.gameBoardOverlay );
 		this.board = makeGameBoard( this, this.gameCtx, this.gameCtxOverlay );
+
+
+	        this.stockForm = new StockForm( this, this.board.stocks );
+		this.buyForm = new BuyForm( this );
+	        this.sellForm = new SellForm( this );
 
 
 		const game = protocol.gameState.game;
@@ -99,12 +111,19 @@ export class GameBoard extends Popup {
 
 		protocol.on( "go", ()=>{
 			this.board.allowPlay = true;
-			gameWaiter.hide();
+			if( !waiterHidden ) {
+				waiterHidden = true;
+				gameWaiter.hide();
+			}
 		} );
 		protocol.on( "roll", (msg)=>{
 			console.log( "got roll:", msg );
 		} );
 		protocol.on( "turn", (msg)=>{
+			if( !waiterHidden ) {
+				waiterHidden = true;
+				gameWaiter.hide();
+			}
 			this.currentPlayer = protocol.gameState.players.find( player=>player.name === msg.name );
 			if( this.currentPlayer.name === protocol.gameState.username ) {
 				this.board.addHighlight( this.board.roll );
@@ -183,12 +202,19 @@ export class GameBoard extends Popup {
 		const xr = x* 26  / rect.width ;
 		const yr = y * 26 / rect.height;
 
-		this.isIn = this.board.selected.find( sel=>{ const space = sel.space;
+		const isIn = sel=>{ const space = sel.space;
 			return( xr >= space.position[0] && yr >= space.position[1] &&
-				xr <= ( space.position[0]+space.size[0] ) && yr <= ( space.position[1]+space.size[1] ) )
-		} );
-		if( this.isIn ) 
+				xr <= ( space.position[0]+space.size[0] ) && yr <= ( space.position[1]+space.size[1] ) )?sel:null;
+		};
+		this.isIn = this.board.selected.find( isIn );
+		if( this.isIn ) {
 			this.board.setActive( this.isIn.space, this.isIn.stock );
+		}
+		else if( this.isIn = isIn( this.board.sell ) ) {
+		} else if( this.isIn = isIn( this.board.quit ) ) {
+			
+		}
+		
 	}
 }
 
@@ -206,12 +232,17 @@ export class Board {
 	roll = null;
 	starts = [];
 	jobs = [];
+	quit = {space:null,stock:null};
+	sell = {space:null,stock:null};
 	allowedPlay = false;
 	selected =  [];
 	timer = null;
+	canSell = false;
+	#gameBoard = null;
 
-	constructor( board, stocks, ctx ) {
+	constructor( board, stocks, ctx, gameBoard ) {
 		this.ctx = ctx;
+		this.#gameBoard = gameBoard;
 		stocks.stocks.forEach( stock=>{
 			this.stocks.push( new Stock( protocol.gameState.game, stock) );	
 		} );
@@ -220,6 +251,8 @@ export class Board {
 			if( space.roll) this.roll = space;
 			if( space.start) this.starts.push( space );
 			if( space.job) this.jobs.push( space );
+			if( space.quit) this.quit.space = space;
+			if( space.sellStocks) this.sell.space = space;
 		} );
 		//this.waiter = new GameWait( this );
 		this.jobs.forEach( job=>this.addHighlight( job ) );
@@ -285,7 +318,12 @@ export class Board {
 				this.hover.drawHover( this.ctx );
 			}
 		}
-
+		this.quit.space.state = this.state;
+		this.quit.space.drawQuit( this.ctx );
+		if( this.canSell ) {
+			this.sell.space.state = this.state;
+			this.sell.space.drawSell( this.ctx );
+		}
 	}
 
 	addHighlight( space, stock ) {
@@ -320,6 +358,8 @@ export class Board {
 	handleSellStocks( space ) {
 	}
 	handleQuit( space ) {
+		protocol.sendQuit();
+		this.#gameBoard.hide();
 	}
 	handleSell( space ) {
 		this.setCurrent( space );
@@ -392,6 +432,42 @@ class BoardSpace extends StockSpace {
 
 	}
 
+	drawSell( ctx ) {
+		if( !this.state ) {
+			ctx.shadowBlur = 60;
+			ctx.shadowColor="#44EE44";
+			ctx.strokeStyle="#44EE44";
+			ctx.lineWidth = 8;
+			ctx.fillStyle="#44ee44";
+		}else {
+			ctx.shadowBlur = 0;
+			ctx.shadowColor = null;
+			ctx.strokeStyle = "#aa8800";
+			ctx.lineWidth = 8;
+			ctx.fillStyle="#aa8800";
+		}
+
+		this.drawBorder(ctx);
+
+	}
+	drawQuit( ctx ) {
+		if( !this.state ) {
+			ctx.shadowBlur = 60;
+			ctx.shadowColor="#44aa99";
+			ctx.strokeStyle="#44aa99";
+			ctx.lineWidth = 8;
+			ctx.fillStyle="#44aa99";
+		}else {
+			ctx.shadowBlur = 0;
+			ctx.shadowColor = null;
+			ctx.strokeStyle = "#aa8800";
+			ctx.lineWidth = 8;
+			ctx.fillStyle="#aa8800";
+		}
+
+		this.drawBorder(ctx);
+
+	}
 	drawHighlight( change, ctx ) {
 		if( this.state ) {
 			ctx.shadowBlur = 60;

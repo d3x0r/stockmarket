@@ -33,6 +33,9 @@ export class Lobby extends Popup {
 		protocol.on( "part", (msg)=>{
 			this.dropUser( msg.user );
 		} );		
+		protocol.on( "delete", (msg)=>{
+			this.dropGame( msg.game );
+		} );		
 		popups.makeButton( this, "Create Game", ()=>{
 			const query = popups.simpleForm( "Enter New Name", "Enter unique name", `${userName}'s Game`, (value)=>{
 
@@ -70,7 +73,6 @@ export class Lobby extends Popup {
 	dropUser( user ) {
 		const userId = this.user_rows.findIndex( ur=>ur.user.name === user.name );
 		if( userId >= 0) {
-			const ur = this.user_rows[userId];
 			const realUser = this.user_rows.splice( userId, 1 );
 			realUser[0].row.remove();
 		}
@@ -94,6 +96,11 @@ export class Lobby extends Popup {
 
 	}
 	dropGame( game ) {
+		const gameId = this.game_rows.findIndex( ug=>ug.game.name === game );
+		if( gameId >= 0) {
+			const realGame = this.game_rows.splice( gameId, 1 );
+			realGame[0].row.remove();
+		}
 	}
 }
 

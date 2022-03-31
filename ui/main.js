@@ -6,7 +6,7 @@ import * as protocol from "./gameProtocol.js"
 import {Login} from "./login.js"
 import {Lobby} from "./lobby.js"
 import {GameBoard,Board} from "./board.js"
-                                   
+
 // <link rel="stylesheet" href="../styles.css">
 const style = document.createElement( "link" );
 style.rel = "stylesheet";
@@ -64,20 +64,19 @@ export function go() {
 
 	} );
 
-	
-
-	//loadGameForm( form );
-
 
 	let oldGame = null;
-	let loginForm = null;
 
 	function loadGameForm(form, events) {
 		// on reconnect, we're going to potentially have a different game data...
-		if( oldGame ) oldGame.remove();
+		if( oldGame ) {
+			// re-init the board instead? it's still the same game?
+			oldGame.show();
+			return;
+		}
 		
 		oldGame = new GameBoard( form, events );
-        
+        	
 	}
 
 
