@@ -247,6 +247,9 @@
 	background: darkgreen;
 }
 
+.stock-buy-value-amount {
+	color:black;
+}
 
 
 [class^="stock-sell"] {
@@ -328,6 +331,7 @@
 	display:table-row;	
 	background:#555;
 }
+
 
 [class$="-ALCA"] {
 	border-color:#fc482c;

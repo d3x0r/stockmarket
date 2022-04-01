@@ -1,6 +1,7 @@
 {
 rollRandom: true,
 minCash:1000,
+startCash:1000,
 startFee: 100, // per landing
 brokerFee: 10, // per share
 spaces:[

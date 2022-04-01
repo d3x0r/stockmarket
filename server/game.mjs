@@ -128,8 +128,10 @@ class Game {
 			const thisPlayer = this.users[this.currentPlayer];
 			if( space.start ) {
 				if ((!thisPlayer.space) || thisPlayer.space_.job ){
+					this.nextTurn();
 				} else {
 					thisPlayer.charge( board.startFee );
+					if( thisPlayer.cash > 0 ) this.nextTurn();
 				}
 			}
 
@@ -141,7 +143,7 @@ class Game {
 				const shares = thisPlayer.stocks.reduce(  ( (acc,r)=>acc+=r.shares ), 0 );
 				const fee = shares * board.brokerFee;
 				thisPlayer.pay( fee );
-				if( fee > thisPlayer.cash ) {
+				if( thisPlayer.cash > 0 ) {
 					go = true;
 				} else {
 					thisPlayer.ws.send( "{op:fee,amount:"+fee+"}" );
@@ -225,6 +227,8 @@ class Game {
 					   && player.cash >= board.minCash 
 					   && player.space_.job ) {
 						player.queue.push( JSOX.stringify( {op:"choose", choices:this.#starts } ) );						
+						this.flush();
+						return;
 					}
 					//player.queue.push( msg );
 				}
@@ -259,6 +263,7 @@ class Game {
 	}
 
 	moveMarket( by ) {
+		this.marketLine -= stocks.stages;
 		this.marketLine += by;
 	        let bounced;
 		do {
@@ -272,8 +277,9 @@ class Game {
 				bounced = true;
 			}
 		} while( bounced );
+		this.marketLine += stocks.stages;
 		
-		const msg = JSOX.stringify( {op:"market", line:this.marketLine+stocks.stages } );
+		const msg = JSOX.stringify( {op:"market", line:this.marketLine } );
 		if( msg ) for( let peer of this.users ) peer.queue.push(msg);
 	}
 
@@ -305,9 +311,13 @@ class Game {
 		this.currentPlayer++;
 		if( this.currentPlayer >= this.users.length )
 			this.currentPlayer = 0;
-		const msg=JSOX.stringify( {op:"turn", name:this.users[this.currentPlayer].name, current:this.currentPlayer } );
+		const thisUser = this.users[this.currentPlayer];
+		const msg=JSOX.stringify( {op:"turn", name:thisUser.name, current:this.currentPlayer } );
 		for( let user of this.users ) {
 			user.queue.push( msg );
+		}
+		if( thisUser.space_.job && thisUser.cash > board.minCash ) {
+			thisUser.queue.push( JSOX.stringify( {op:"choose", choices:this.#starts } ) );						
 		}
 	}
 	
@@ -324,7 +334,7 @@ class User {
 	name = '';
 	#ready = false;
 	stocks = stocks.stocks.map( stock=>(new UserStock(stock)) )
-	cash = 1000;
+	cash = board.startCash;
 	space = 0;
 	movingLeft = true;
 	inPlay = false;
@@ -335,7 +345,11 @@ class User {
 	#ws = null;
 	#game = null;
 	#space_ = null;
-	
+	#turn = false;
+
+	set moveEndsTurn( val) {
+		this.#turn = val;
+	}	
 	get queue() { return this.#queue; }
 
 	get space_() { return this.#space_}
@@ -376,7 +390,7 @@ class User {
 	reset() {
 		// when joining a new game, clear player state.
 		this.#ready = false;
-		this.cash = 0;
+		this.cash = board.startCash;
 		this.space = 0;
 		for( let stock of this.stocks ) {
 			stocks.shares = 0;
@@ -508,7 +522,7 @@ class User {
 			/* reset player */
 			this.inPlay = false;
 			this.space = 0;
-			this.cash = 1000;
+			this.cash = 0;
 			this.stocks.forEach( stock=>stock.shares = 0 );
 			
 			joinLobby( this );

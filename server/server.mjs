@@ -1,7 +1,11 @@
 
 import {sack} from "sack.vfs";
 import path from "path";
-
+//const mypath = import.meta.url.split("/");
+//const myroot = (mypath.splice(mypath.length-1,1),mypath.join('/')+"/");
+//console.log( "THINK:", myroot );
+process.chdir( "ui");
+//console.log( "Dir?", process.cwd );
 import {accept,connect} from "./game.mjs"
 
 const extMap = { '.js': 'text/javascript'
