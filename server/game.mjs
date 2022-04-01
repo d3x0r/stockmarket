@@ -540,11 +540,28 @@ const users = new Map();
 const games = new Map();
 
 export function connect(ws) {
-		//console.log( "Connect:", ws );
-		ws.onmessage = getHandler( ws );
-		ws.onclose = function() {
-                	console.log( "Remote closed..." );			
-	        };
+	//console.log( "Connect:", ws );
+	const shared = { lastMessage : 0 };
+	ws.onmessage = getHandler( ws, shared );
+	ws.onclose = function() {
+        	console.log( "Remote closed..." );
+		clearTimeout( pingTimer );
+	};
+
+	let pingTimer =null;
+	pingTick();
+	function pingTick(){
+		if( ws.readyState === 1 ) {
+			let now = Date.now();
+			if( (now - shared.lastMessage) >= 30000 )     {
+				//console.log( "Ping", (now - ws.lastMessage) );
+				ws.ping();
+				shared.lastMessage = now;
+			}
+			
+			pingTimer = setTimeout( pingTick, 30000 - (now - shared.lastMessage) );
+		}
+	}
 	
 }
 
@@ -562,7 +579,7 @@ export function accept( ws ) {
 
 let joinLobby = null;
 
-function getHandler( ws ) {
+function getHandler( ws, shared ) {
 	const parser = JSOX.begin( dispatchMessage );
 	
 	let user = null;
@@ -571,7 +588,8 @@ function getHandler( ws ) {
 
         
         function dispatchMessage(msg) {
-	try {
+	try {           
+		shared.lastMessage = Date.now();
 	        switch( msg.op ) {
 		case "username":
 			const oldUser = users.get( msg.name );
