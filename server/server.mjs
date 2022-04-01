@@ -26,7 +26,7 @@ const extMap = { '.js': 'text/javascript'
 
 export function openServer( opts, cb )
 {
-	var serverOpts = opts || {port:Number(process.argv[2])||8888} ;
+	var serverOpts = opts || {port:Number(process.argv[2])||process.env.PORT||8888} ;
 	var server = sack.WebSocket.Server( serverOpts )
 	var disk = sack.Volume();
 	//console.log( "disk?", disk, Object.getPrototypeOf( disk ) );
