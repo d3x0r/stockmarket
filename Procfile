@@ -1,1 +1,1 @@
-web: node --experimental-loader=sack.vfs/import.mjs server/server.mjs 5000
+web: node --experimental-loader=sack.vfs/import.mjs server/server.mjs
