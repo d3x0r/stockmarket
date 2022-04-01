@@ -1,0 +1,8 @@
+{
+  "name": "Stock Market Heroku App",
+  "description": "A Reimplementation of stockmarket",
+  "repository": "https://github.com/d3x0r/stockmarket",
+  "logo": "",
+  "keywords": ["game", "stock market", "stock", "node"],
+  "image": "CoverImage.png"
+}

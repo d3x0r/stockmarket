@@ -51,6 +51,8 @@ export class GameBoard extends Popup {
 	#allowPlay = false;
 	isIn = null;
 	currentPlayer = null;
+	currentSpace = null;
+	thisPlayer = null;
 	gameAlert = new popups.AlertForm();
 
 	get allowPlay() { return this.#allowPlay }
@@ -63,6 +65,10 @@ export class GameBoard extends Popup {
 
 		const game = protocol.gameState.game;
 		this.currentPlayer = game.users[game.currentPlayer];
+		for( let u = 0; u < game.users.length; u++ ) {
+			if( game.users[u].name === protocol.gameState.username ) {
+			}
+		}
         
 		this.gameAlert.hide();
 		const gameBoard = this.gameBoard = document.createElement( "canvas" );
@@ -98,15 +104,14 @@ export class GameBoard extends Popup {
 		const players = protocol.gameState.players;
 		let inProgress = true;
 
-		let thisPlayer;
 		for( let player of players ) {
 			if( player.name === protocol.gameState.username ) 
-				thisPlayer = player;
+				this.thisPlayer = player;
 			if( !player.space ) inProgress = false;
 		}
 
 
-		if( thisPlayer.name === this.currentPlayer.name ) {
+		if( this.thisPlayer.name === this.currentPlayer.name ) {
 			this.board.allowPlay = true;
 			this.board.addHighlight( this.board.roll );
 		}
@@ -116,12 +121,12 @@ export class GameBoard extends Popup {
 			else              gameWaiter.reset();
 		}
 		else
-			if( thisPlayer ) {
+			if( this.thisPlayer ) {
 				// I should be a player, but for my player, find my space, and set it current in the board
 				// otherwise it's a new game... this should also be 'inProgress'
-				const playerSpace = this.board.spaces.find( space=>space.id===thisPlayer.space );
+				const playerSpace = this.board.spaces.find( space=>space.id===this.thisPlayer.space );
 		        
-				this.board.currentSpace = playerSpace;		
+				this.currentSpace = playerSpace;		
 			}
 
 		protocol.on( "go", ()=>{
@@ -140,7 +145,7 @@ export class GameBoard extends Popup {
 				if( gameWaiter ) gameWaiter.hide();
 			}
 			this.currentPlayer = protocol.gameState.players.find( player=>player.name === msg.name );
-			if( !this.currentPlayer ) 
+			if( this.currentPlayer ) 
 				if( this.currentPlayer.name === protocol.gameState.username ) {
 					this.board.addHighlight( this.board.roll );
 					this.gameAlert.show( "It's your turn..." );
@@ -164,10 +169,13 @@ export class GameBoard extends Popup {
 			console.log( "got playerMove:", msg );
 			const space = this.board.spaces.find( (space)=>space.id === msg.id );			
 			if( msg.name === protocol.gameState.username ) {
-				if( space.stock ) {
-					this.buyForm.show( thisPlayer, space.stock );
+				if( space.stock && !space.sell ) {
+					if( space.meeting )
+						this.buyForm.show( this.thisPlayer, space.stock, 1 );
+					else
+						this.buyForm.show( this.thisPlayer, space.stock, Infinity );
 				}
-				this.board.currentSpace = space;
+				this.currentSpace = space;
 				this.board.animate();
 			} else {
 				const player = protocol.gameState.players.find( player=>player.name === msg.name );
@@ -207,15 +215,14 @@ export class GameBoard extends Popup {
 		const players = protocol.gameState.players;
 		let inProgress = true;
 
-		let thisPlayer;
 		for( let player of players ) {
 			if( player.name === protocol.gameState.username ) 
-				thisPlayer = player;
+				this.thisPlayer = player;
 			if( !player.space ) inProgress = false;
 		}
 
 
-		if( thisPlayer.name === this.currentPlayer.name ) {
+		if( this.thisPlayer.name === this.currentPlayer.name ) {
 			this.board.allowPlay = true;
 			this.board.addHighlight( this.board.roll );
 		}
@@ -225,12 +232,12 @@ export class GameBoard extends Popup {
 			else              gameWaiter.reset();
 		}
 		else
-			if( thisPlayer ) {
+			if( this.thisPlayer ) {
 				// I should be a player, but for my player, find my space, and set it current in the board
 				// otherwise it's a new game... this should also be 'inProgress'
-				const playerSpace = this.board.spaces.find( space=>space.id===thisPlayer.space );
+				const playerSpace = this.board.spaces.find( space=>space.id===this.thisPlayer.space );
 		        
-				this.board.currentSpace = playerSpace;		
+				this.currentSpace = playerSpace;		
 
 			}
 
@@ -288,7 +295,7 @@ export class Board {
 	ctx = null; // overlay context
 	waiter = null;
 	hover = null;
-	currentSpace = null;
+	//currentSpace = null;
 	state = 0;
 	roll = null;
 	starts = [];
@@ -319,14 +326,15 @@ export class Board {
 			if( space.id === gameBoard.currentPlayer.space ) this.setCurrent( space, null );
 		} );
 		//this.waiter = new GameWait( this );
-		if( !gameBoard.currentPlayer.space ) 
+		if( !gameBoard.currentSpace || gameBoard.currentSpace.job ) 
 			this.jobs.forEach( job=>this.addHighlight( job ) );
 		
 		//this.jobs.forEach( job=>this.addHighlight( job ) );
 	}
 
 	setCurrent(space,stock) {
-		if( space != this.currentSpace ) {
+		if( space != this.#gameBoard.currentSpace ) {
+			this.#gameBoard.currentSpace = space;
 			protocol.sendSpace( space.id, stock );
 			if( !space.job ) this.selected.length = 0;
 			return;
@@ -365,14 +373,15 @@ export class Board {
 				}
 			}
 		}
+	console.log( "player current, next is:", cur, next );
 		if( next < 0 ) {
-			this.tokens.push( {id:space.id,users:[user]} );
+			this.tokens.push( {id:space.id,space:space,users:[user]} );
 		}else{
 			this.tokens[next].users.push( user );
 		}
 			
 		if( cur >= 0 ) {	
-			const list = tokenList.users;
+			const list = this.tokens[cur];//tokenList.users;
 			for( let u = 0; u < list.length; u++ ) {
 				const us = list[u];
 				if( us === user ) {
@@ -410,19 +419,23 @@ export class Board {
 
 		this.ctx.clearRect( 0, 0, 4096, 4096 );
 
+		for( let token of this.tokens  ) {
+			for( let p = 0; p < token.users.length; p++ ) {
+				const pawn = token.users[p];
+				token.space.drawToken( this.ctx, pawn.color, p );
+			}
+		}
 
 		this.selected.forEach( sel=>{const space=sel.space; if( space === this.hover || space == this.currentSpace ) return; space.state=this.state; space.drawHighlight( n, this.ctx ) });
 
-		if( this.currentSpace ) {
-			if( tokens.width )
-				this.currentSpace.drawToken( this.ctx, 5, 0 );
-			this.currentSpace.state=this.state;
-			this.currentSpace.drawCurrent( this.ctx );
+		if( this.#gameBoard.currentSpace ) {
+			this.#gameBoard.currentSpace.state=this.state;
+			this.#gameBoard.currentSpace.drawCurrent( this.ctx );
 		}
 
 		if( this.hover ) {
 			this.hover.state=this.state;
-			if( this.currentSpace == this.hover ) {
+			if( this.#gameBoard.currentSpace == this.hover ) {
 			} else {
 			
 				this.hover.drawHover( this.ctx );

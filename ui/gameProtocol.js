@@ -12,6 +12,7 @@ class GameState extends Events {
 	stocks = null;
 	players = null;
 	currentPlayer = null;
+	thisPlayer = null;
 	username = null;
 	game = null;
 	events = new Events();
@@ -123,7 +124,13 @@ function parseMessage( ws, msg ) {
 		gameState.stocks = msg.stocks;
 		gameState.game = msg.game;
 		gameState.players = msg.game.users;
-		
+		for( let player of gameState.game.users ) {
+			if( player.name === gameState.username ) {
+				gameState.thisPlayer = player;
+				break;
+			}
+		}
+		if( !gameState.thisPlayer) debugger;
 		//gameEvents = new Events();
 		gameEvents.on( "load" );
 		break;
