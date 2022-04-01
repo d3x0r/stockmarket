@@ -11,7 +11,7 @@
   },
   "dependencies":{
 	"sack.vfs":"latest",
-	"@d3x0r/popups":"1.0.5",
+	"@d3x0r/popups":"1.0.104",
 	"jsox":"latest"
 	},
   "private": false,
