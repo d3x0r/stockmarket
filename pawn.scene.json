@@ -1,0 +1,164 @@
+{
+	"metadata": {
+		"version": 4.5,
+		"type": "Object",
+		"generator": "Object3D.toJSON"
+	},
+	"geometries": [
+		{
+			"uuid": "ace51ee5-d35f-4a91-913a-4f1c7cf4a9b3",
+			"type": "LatheGeometry",
+			"points": [
+				{
+					"x": 0,
+					"y": 0.8
+				},
+				{
+					"x": 0.28,
+					"y": 0.72
+				},
+				{
+					"x": 0.4,
+					"y": 0.52
+				},
+				{
+					"x": 0.48,
+					"y": -0.5
+				},
+				{
+					"x": 0.56,
+					"y": -1.9
+				},
+				{
+					"x": 2.04,
+					"y": -2.8
+				},
+				{
+					"x": 2.04,
+					"y": -3.62
+				}],
+			"segments": 10,
+			"phiStart": 0,
+			"phiLength": 6.283185307179586
+		}],
+	"materials": [
+		{
+			"uuid": "d48b7333-4f3d-490c-8759-6a9b513fa63f",
+			"type": "MeshPhongMaterial",
+			"color": 14221826,
+			"emissive": 0,
+			"emissiveIntensity": 1.32,
+			"specular": 12300207,
+			"shininess": 31.48,
+			"reflectivity": 0.86,
+			"refractionRatio": 0.98,
+			"side": 1,
+			"depthFunc": 3,
+			"depthTest": true,
+			"depthWrite": true,
+			"colorWrite": true,
+			"stencilWrite": false,
+			"stencilWriteMask": 255,
+			"stencilFunc": 519,
+			"stencilRef": 0,
+			"stencilFuncMask": 255,
+			"stencilFail": 7680,
+			"stencilZFail": 7680,
+			"stencilZPass": 7680
+		}],
+	"object": {
+		"uuid": "78DB3C63-F840-497D-AB5E-A7E9011975EF",
+		"type": "Scene",
+		"name": "Scene",
+		"layers": 1,
+		"matrix": [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
+		"children": [
+			{
+				"uuid": "b64b3504-dd83-4f81-a4c6-6af7acc6f220",
+				"type": "Mesh",
+				"name": "Lathe",
+				"layers": 1,
+				"matrix": [1,0,0,0,0,1,0,0,0,0,1,0,0,3.1121224292143284,0,1],
+				"geometry": "ace51ee5-d35f-4a91-913a-4f1c7cf4a9b3",
+				"material": "d48b7333-4f3d-490c-8759-6a9b513fa63f"
+			},
+			{
+				"uuid": "6a7bc8fb-51e5-4456-8177-ae2ddb43b196",
+				"type": "PointLight",
+				"name": "PointLight",
+				"layers": 1,
+				"matrix": [1,0,0,0,0,1,0,0,0,0,1,0,4.415378501363146,6.175862609069075,1.783194260830773,1],
+				"color": 16777215,
+				"intensity": 0.34,
+				"distance": 0,
+				"decay": 1,
+				"shadow": {
+					"camera": {
+						"uuid": "abce04ed-2e47-46ec-b913-79fc97aa135c",
+						"type": "PerspectiveCamera",
+						"layers": 1,
+						"fov": 90,
+						"zoom": 1,
+						"near": 0.5,
+						"far": 500,
+						"focus": 10,
+						"aspect": 1,
+						"filmGauge": 35,
+						"filmOffset": 0
+					}
+				}
+			},
+			{
+				"uuid": "7471f19d-5035-4a18-ab42-9dd06bf1d37d",
+				"type": "PointLight",
+				"name": "PointLight",
+				"layers": 1,
+				"matrix": [1,0,0,0,0,1,0,0,0,0,1,0,-2.454308865659767,5.953172459811404,-2.8575229241884226,1],
+				"color": 16777215,
+				"intensity": 1,
+				"distance": 0,
+				"decay": 1,
+				"shadow": {
+					"camera": {
+						"uuid": "dee30642-f9a6-4442-9069-0ce8018ddc2b",
+						"type": "PerspectiveCamera",
+						"layers": 1,
+						"fov": 90,
+						"zoom": 1,
+						"near": 0.5,
+						"far": 500,
+						"focus": 10,
+						"aspect": 1,
+						"filmGauge": 35,
+						"filmOffset": 0
+					}
+				}
+			},
+			{
+				"uuid": "8e9e72b2-9d26-4906-bd35-fa0a742ca636",
+				"type": "PointLight",
+				"name": "PointLight",
+				"layers": 1,
+				"matrix": [1,0,0,0,0,1,0,0,0,0,1,0,4.143074495324965,5.781381907482181,-4.445577794438973,1],
+				"color": 16777215,
+				"intensity": 0.04,
+				"distance": 0,
+				"decay": 1,
+				"shadow": {
+					"camera": {
+						"uuid": "99669a70-ad06-4e10-a258-1e31c1581f41",
+						"type": "PerspectiveCamera",
+						"layers": 1,
+						"fov": 90,
+						"zoom": 1,
+						"near": 0.5,
+						"far": 500,
+						"focus": 10,
+						"aspect": 1,
+						"filmGauge": 35,
+						"filmOffset": 0
+					}
+				}
+			}]
+	}
+}
