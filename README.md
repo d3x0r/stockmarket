@@ -54,3 +54,11 @@ The last player to leave a game will delete the game from the server.
 The server currently only has a memory image of the games, and does not persist any games or users in any storage.
 
 Normally server logs will not include your IP; although (un)certain error conditions may log the connection information.
+
+Heroku router logs connection information like
+
+```
+ at=info method=GET path="/" host=wpc-stock-market.herokuapp.com request_id=b85f19cf-a695-46f3-9f3e-1e120c757de1 fwd="your-ip-here" dyno=web.1 connect=0ms service=116054ms status=101 bytes=14105 protocol=https
+```
+
+which I get, but don't have control over; so instead I offer: this information will never be used for any purpose.
