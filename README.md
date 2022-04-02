@@ -4,7 +4,7 @@
 This is a Node.JS server using [sack.vfs](https://github.com/d3x0r/sack.vfs) for websockets and HTTP service; [JSOX](https://github.com/d3x0r/jsox) for message encoding; 
 [@d3x0r/Popups](https://github.com/d3x0r/popups) for user interface dialogs.
 
-Live [Demo](https://wdc-stock-market.herokuapp.com) at heroku.
+Live [Demo](https://wpc-stock-market.herokuapp.com) at heroku.
 
 ## Howto
 
