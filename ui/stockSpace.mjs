@@ -36,7 +36,7 @@ export class StockSpace {
 				this.holders = space.holders;
 				this.meeting = board.spaces.find( s=>(s.id === this.holders[0] ) );
 				if( !this.meeting ) pendingMeetings.push( this );
-				this.meetDirection = !this.holders[1];// convert to bool  (reverse value)			
+				this.meetingDirection = this.holders[1]<0;// convert to bool  (reverse value)			
 			}
 		}
 		if( "label" in space ) {
@@ -52,11 +52,11 @@ export class StockSpace {
 
 		if( "left" in space ) {
 			this.left = board.spaces.find( s=>(s.id === space.left ) );
-			if( this.left ) this.left.right = this;
+			if( this.left && !this.left.right ) this.left.right = this;
 		}
 		if( "right" in space ) {
 			this.right = board.spaces.find( s=>(s.id === space.right ) );
-			if( this.right ) this.right.left = this;
+			if( this.right && !this.right.left ) this.right.left = this;
 		}
 
 		if( "leaveLeft" in space ) {

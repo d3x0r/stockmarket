@@ -2,27 +2,28 @@
 import {Popup,popups} from "/node_modules/@d3x0r/popups/popups.mjs"
 import * as protocol from "./gameProtocol.js"
 
-export class StockForm extends Popup {
+// used when a player is required to sell stocks to pay a debt
+
+export class DebtForm extends Popup {
 
 	rows = [];
 	table = document.createElement( "div" );
 	table2 = document.createElement( "div" );
 
-	constructor( parent, stocks ) {
+	constructor( parent  ) {
         	super( null, parent, {suffix:"-stock", noCaption:true} );
 
 		this.table.className = "stock-table";
 		this.table.style.display ="inline-block";
 		this.table2.className = "stock-table";
 		this.table2.style.display ="inline-block";
-		for( let stock of stocks ) { if( this.rows.length >= 4 ) this.addRow( stock, this.table2 ); else this.addRow( stock, this.table ); }
+		//for( let stock of stocks ) { if( this.rows.length >= 4 ) this.addRow( stock, this.table2 ); else this.addRow( stock, this.table ); }
 		//this.hide();
 		this.appendChild( this.table );
 		this.appendChild( this.table2 );
 
 		this.divFrame.style.left="18.75%";
 		this.divFrame.style.top="65%";
-		protocol.on( "market", (msg)=>this.refresh() );
 
         }
 

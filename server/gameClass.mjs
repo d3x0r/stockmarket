@@ -18,12 +18,15 @@ export class Game {
 
 	bank = 1500000; // 1.5m total cash?(config!)
 	marketLine = 0;
+	inPlay = false;
 
 	#stocks = stocks.stocks.map( stock=>(new Stock(this,stock)) )
 	#spaces = [];
 	#starts = [];
 	
 	market = new Market( this.#stocks );
+	
+	get stocks() { return this.#stocks }
 
 	constructor(name) {
 		this.name = name;
@@ -52,17 +55,36 @@ export class Game {
 		
 		this.play( forUser, d1+d2 );
 	}
+	sell( user, userStock ) {
+		const msg=`{op:stock,user:"${JSOX.escape(user.name)}",stock:${JSOX.stringify( userStock )} }`;
+		// update everyone's idea of this user's stocks (including 'this' user)
+		for( let user of this.users ) {
+			user.queue.push( msg );
+		}
+		
+	}
+	buy( user, userStock ) {
+		const msg=`{op:stock,user:"${JSOX.escape(user.name)}",stock:${JSOX.stringify( userStock )} }`;
+		// update everyone's idea of this user's stocks (including 'this' user)
+		for( let user of this.users ) {
+			user.queue.push( msg );
+		}
+		
+		this.nextTurn();	
+		this.flush();
+	}
 	pickStart() {
+		this.inPlay = true;
 		for( let i = 0; i < this.users.length; i ++ ) {
 			const swap = Math.floor( Math.random() * this.users.length );
 			if( swap != i ) {
 				const old = this.users[swap];
 				this.users[swap] = this.users[i];
 				this.users[i] = old;				
-			}
-			
+			}			
 		}
 		const someUser = this.currentPlayer = Math.floor( Math.random() * this.users.length );
+		this.users[someUser].rolled = false;  // who ever is going now hasn't rolled... on next turn next player's rolled gets set to false.  Players always roll.
 		const msg=JSOX.stringify( {op:"start", name:this.users[someUser].name } );
 		for( let user of this.users ) {
 			user.ws.send( msg );
@@ -81,10 +103,14 @@ export class Game {
 			const thisPlayer = this.users[this.currentPlayer];
 			if( space.start ) {
 				if ((!thisPlayer.space) || thisPlayer.space_.job ){
-					this.nextTurn();
+					if( thisPlayer.rolled )
+						go = true;
 				} else {
-					thisPlayer.charge( board.startFee );
-					if( thisPlayer.cash > 0 ) this.nextTurn();
+					if( !thisPlayer.rolled ) {
+						thisPlayer.charge( board.startFee );
+						if( thisPlayer.cash > 0 ) 
+							go = true;
+					}
 				}
 			}
 
@@ -131,6 +157,7 @@ export class Game {
 				for( let stock of thisPlayer.stocks ) {
 					if( space.stock.id === stock.id ) {
 						const div = stock.dividend * stock.shares;
+						thisPlayer.buying = true;
 						thisPlayer.pay( div );
 						break;
 					}
@@ -179,7 +206,15 @@ export class Game {
 					if( user === player 
 					   && player.cash >= board.minCash 
 					   && player.space_.job ) {
-						player.queue.push( JSOX.stringify( {op:"choose", choices:this.#starts } ) );						
+						player.queue.push( JSOX.stringify( {op:"choose", choices:this.#starts } ) );
+						player.choosing = true;
+						if( this.users.length > 1 ) {
+							const outmsg = JSOX.stringify( {op:"choosing", user:player.name } );
+							for( let otherPlayer of this.users ) {
+								if( otherPlayer === player ) continue;
+								otherPlayer.ws.send( outmsg );
+							}
+						}
 						this.flush();
 						return;
 					}
@@ -241,22 +276,34 @@ export class Game {
 		let choices = [{stock:space.stock?.id||0,space:space,dir:left}];
 		{
 			let n = 0;
+			console.log( "--------- Getting moves", space, left );
 			while( number-- ) {
-				for( let c =0; c < choices.length; c++ ) {
+				console.log( "Path has %d choices", choices.length, choices.map( c=>({space:c.space,dir:c.dir}) ) );
+				const curlen = choices.length;
+				for( let c =0; c < curlen; c++ ) {
 					const was = choices[c].space;
 					if( choices[c].dir )
 						choices[c].space = choices[c].space.left;
 					else
 						choices[c].space = choices[c].space.right;
-					if( number ) // have to have at least 1 more move after this to start this chain.
-						if( !was.split && choices[c].space.meeting ) { // don't go back into a meeting
-							choices.push( {stock:choices[c].space.stock, space:choices[c].space.meeting,dir:space.meetingDirection} );
-						}
+					if( !was.split && was.meeting ) { // don't go back into a meeting
+						console.log( "came from a board space that has a meting... add fork:", was.meeting, was.meetingDirection );
+						choices.push( {stock:was.stock, space:was.meeting, dir:was.meetingDirection} );
+					}
 				}
 			}
 		}		
-		if( user ) 
-			user.ws.send( JSOX.stringify( {op:"choose", choices:choices.map( choice=>({ space:choice.space.id, stock:choice.stock.id }) ) } ) );
+		if( user )  {
+			user.ws.send( JSOX.stringify( {op:"choose", choices:choices.map( choice=>({ space:choice.space.id, stock:choice.stock?choice.stock.id:0 }) ) } ) );
+			user.choosing = true;
+			if( this.users.length > 1 ) {
+				const outmsg = JSOX.stringify( {op:"choosing", user:user.name } );
+				for( let otherPlayer of this.users ) {
+					if( otherPlayer === user ) continue;
+					otherPlayer.ws.send( outmsg );
+				}
+			}
+		}
 		return ;
 	}
 
@@ -266,11 +313,22 @@ export class Game {
 			this.currentPlayer = 0;
 		const thisUser = this.users[this.currentPlayer];
 		const msg=JSOX.stringify( {op:"turn", name:thisUser.name, current:this.currentPlayer } );
+		// turn always has a roll.... and this clears that anything has happened...  (selling?buying?)
+		thisUser.rolled = false;
+
 		for( let user of this.users ) {
 			user.queue.push( msg );
 		}
-		if( thisUser.space_.job && thisUser.cash > board.minCash ) {
+		if( (thisUser.space && thisUser.space_.job ) && thisUser.cash > board.minCash ) {
 			thisUser.queue.push( JSOX.stringify( {op:"choose", choices:this.#starts } ) );						
+			thisUser.choosing = true;
+			if( this.users.length > 1 ) {
+				const outmsg = JSOX.stringify( {op:"choosing", user:thisUser.name } );
+				for( let otherPlayer of this.users ) {
+					if( otherPlayer === thisUser ) continue;
+					otherPlayer.ws.send( outmsg );
+				}
+			}
 		}
 	}
 	

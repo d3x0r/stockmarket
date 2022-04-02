@@ -11,7 +11,7 @@ const tokens = document.createElement( "img" );
 tokens.src = "./images/"+tokenInfo.lowres.name;
 
 const tokenSpots = [];
-for( let x = 0; x < 4; x++ ) for( let y = 0; y < 2; y++ )  {
+for( let y = 0; y < 2; y++ ) for( let x = 0; x < 4; x++ )   {
 	tokenSpots.push( {x: x*tokenInfo.lowres.width/4, y:y*tokenInfo.lowres.height/2} );
 }
 
@@ -26,6 +26,8 @@ import {GameWait} from "./gameWait.js"
 import {Stock} from "./stock.mjs" 
 import {BuyForm} from "./buyForm.js"
 import {SellForm} from "./sellForm.js"
+import {DebtForm} from "./debtForm.js"
+import {PlayerStatusForm} from "./playerStatusForm.js"
 import {StockForm} from "./stockForm.js"
 import {StockSpace} from "./stockSpace.mjs" 
 import {Popup,popups} from "/node_modules/@d3x0r/popups/popups.mjs"
@@ -46,7 +48,7 @@ function makeGameBoard( gameBoard, ctx, overlayCtx ) {
 }
 
 export class GameBoard extends Popup {
-
+	showing = true;
 	board = null;
 	#allowPlay = false;
 	isIn = null;
@@ -54,6 +56,13 @@ export class GameBoard extends Popup {
 	currentSpace = null;
 	thisPlayer = null;
 	gameAlert = new popups.AlertForm();
+
+	rolling = false;
+	stockForm = null;
+	playerStatus = null; // form;
+	buyForm = new BuyForm( this );
+	sellForm = new SellForm( this );
+	debtForm = new DebtForm( this );
 
 	get allowPlay() { return this.#allowPlay }
 	set allowPlay(val){
@@ -64,13 +73,27 @@ export class GameBoard extends Popup {
 		super( "Stock Market", form );
 
 		const game = protocol.gameState.game;
+
 		this.currentPlayer = game.users[game.currentPlayer];
 		for( let u = 0; u < game.users.length; u++ ) {
 			if( game.users[u].name === protocol.gameState.username ) {
 			}
 		}
-        
+
+
+		const players = protocol.gameState.players;
+		let inProgress = true;
+
+		for( let player of players ) {
+			if( player.name === protocol.gameState.username ) 
+				this.thisPlayer = player;
+			if( !player.space ) inProgress = false;
+		}
+
+
 		this.gameAlert.hide();
+
+
 		const gameBoard = this.gameBoard = document.createElement( "canvas" );
 		gameBoard.width = 4096;
 		gameBoard.height = 4096;
@@ -96,27 +119,13 @@ export class GameBoard extends Popup {
 		this.board = makeGameBoard( this, this.gameCtx, this.gameCtxOverlay );
 
 
-	        this.stockForm = new StockForm( this, this.board.stocks );
-		this.buyForm = new BuyForm( this );
-	        this.sellForm = new SellForm( this );
 
-
-		const players = protocol.gameState.players;
-		let inProgress = true;
-
-		for( let player of players ) {
-			if( player.name === protocol.gameState.username ) 
-				this.thisPlayer = player;
-			if( !player.space ) inProgress = false;
-		}
-
-
-		if( this.thisPlayer.name === this.currentPlayer.name ) {
+		if( this.thisPlayer.inPlay && this.thisPlayer.name === this.currentPlayer.name ) {
 			this.board.allowPlay = true;
 			this.board.addHighlight( this.board.roll );
 		}
 
-		if( !inProgress ) {
+		if( !this.thisPlayer.inPlay ) {
 			if( !gameWaiter ) gameWaiter = new GameWait( this );
 			else              gameWaiter.reset();
 		}
@@ -129,6 +138,13 @@ export class GameBoard extends Popup {
 				this.currentSpace = playerSpace;		
 			}
 
+		for( let player of players ) {
+			if( player.space ) {
+				const space = this.board.spaces.find( space=>space.id===player.space );
+				if( space ) this.board.addToken( player, space );
+			}
+		}
+
 		protocol.on( "go", ()=>{
 			this.board.allowPlay = true;
 			if( !waiterHidden ) {
@@ -137,9 +153,11 @@ export class GameBoard extends Popup {
 			}
 		} );
 		protocol.on( "roll", (msg)=>{
+			this.rolling = false;
 			console.log( "got roll:", msg );
 		} );
 		protocol.on( "turn", (msg)=>{
+			this.board.allowPlay = true;
 			if( !waiterHidden ) {
 				waiterHidden = true;
 				if( gameWaiter ) gameWaiter.hide();
@@ -147,6 +165,7 @@ export class GameBoard extends Popup {
 			this.currentPlayer = protocol.gameState.players.find( player=>player.name === msg.name );
 			if( this.currentPlayer ) 
 				if( this.currentPlayer.name === protocol.gameState.username ) {
+					this.rolling = true;
 					this.board.addHighlight( this.board.roll );
 					this.gameAlert.show( "It's your turn..." );
 				}else
@@ -157,14 +176,23 @@ export class GameBoard extends Popup {
 		protocol.on( "start", (msg)=>{
 			// this should include the player turn order too.
 			this.currentPlayer = protocol.gameState.players.find( player=>player.name === msg.name );
+			this.board.allowPlay = true;
 			if( this.currentPlayer.name === protocol.gameState.username ) {
+				this.rolling = true;
 				this.board.addHighlight( this.board.roll );
 				this.gameAlert.show( "It's your turn..." );
 			}else
 				this.gameAlert.show( "It's " + this.currentPlayer.name + "'s turn..." );
 		} );
 
-
+		protocol.on( "player", (msg)=>{
+			if( this.showing ) {
+				this.playerStatus.addPlayerRow( msg.user );
+			}
+		} );
+		protocol.on("quit", (msg)=>{
+				this.playerStatus.removePlayer( msg.user );
+			} );
 		protocol.on( "space", (msg)=>{
 			console.log( "got playerMove:", msg );
 			const space = this.board.spaces.find( (space)=>space.id === msg.id );			
@@ -175,7 +203,11 @@ export class GameBoard extends Popup {
 					else
 						this.buyForm.show( this.thisPlayer, space.stock, Infinity );
 				}
+				if( this.rolling ) {
+					this.board.addHighlight( this.board.roll,null );
+				}
 				this.currentSpace = space;
+				this.board.addToken( this.thisPlayer, space );
 				this.board.animate();
 			} else {
 				const player = protocol.gameState.players.find( player=>player.name === msg.name );
@@ -188,6 +220,25 @@ export class GameBoard extends Popup {
 			const paid = protocol.gameState.players.find( player=>player.name === msg.user );
 			console.log( "Player Cash Update:", msg );
 			paid.cash = msg.balance;			
+		} );
+		protocol.on( "give", (msg)=>{
+			if( msg.user === protocol.gameState.username ) {
+				//stocks
+				// shares and balance included..
+				const stock = this.thisPlayer.stocks.find( stock=>stock.id === msg.stock.id );
+				if( stock ) {
+					stock.shares = msg.balance;
+				}
+			}
+		} );
+		protocol.on( "stock", (msg)=>{
+			if( msg.user === protocol.gameState.username ) {
+				//stocks
+				const stock = this.thisPlayer.stocks.find( stock=>stock.id === msg.stock.id );
+				if( stock ) {
+					stock.shares = msg.stock.shares;
+				}
+			}
 		} );
 		protocol.on( "choose", (msg)=>{
 			this.board.clearHighlights();
@@ -204,9 +255,18 @@ export class GameBoard extends Popup {
 		this.gameBoardOverlay.addEventListener( "mousemove", (evt)=>this.mousemove(event) );
 		this.gameBoardOverlay.addEventListener( "mouseup", (evt)=>this.mouseup(event) );
 		this.gameBoardOverlay.addEventListener( "mousedown", (evt)=>this.mousedown(event) );
-	}
 
+	        this.stockForm = new StockForm( this, this.board.stocks );
+		this.playerStatus = new PlayerStatusForm( this, this.thisPlayer, this.board.stocks );
+
+
+	}
+	hide() {
+		super.hide();
+		this.showing = false;
+	}
 	show(  ) {
+		this.showing = true;
 		this.board.sweepTokens();
 		
 		const game = protocol.gameState.game;
@@ -219,15 +279,21 @@ export class GameBoard extends Popup {
 			if( player.name === protocol.gameState.username ) 
 				this.thisPlayer = player;
 			if( !player.space ) inProgress = false;
+			else{
+				const space = this.board.spaces.find( space=>space.id===player.space );
+				if( space ) this.board.addToken( player, space );
+			}
 		}
 
+		this.playerStatus.show( this.thisPlayer );
 
 		if( this.thisPlayer.name === this.currentPlayer.name ) {
 			this.board.allowPlay = true;
+			
 			this.board.addHighlight( this.board.roll );
 		}
 
-		if( !inProgress ) {
+		if( !this.thisPlayer.inPlay ) {
 			if( !gameWaiter ) gameWaiter = new GameWait( this );
 			else              gameWaiter.reset();
 		}
@@ -241,9 +307,6 @@ export class GameBoard extends Popup {
 
 			}
 
-
-		console.log( "Reload game data" );
-	debugger;
 		super.show();
 	}
 
@@ -334,6 +397,9 @@ export class Board {
 
 	setCurrent(space,stock) {
 		if( space != this.#gameBoard.currentSpace ) {
+			if( !this.#gameBoard.thisPlayer.rolled && this.#gameBoard.thisPlayer === this.#gameBoard.currentPlayer && protocol.gameState.game.inPlay )
+				this.addHighlight( this.roll );
+
 			this.#gameBoard.currentSpace = space;
 			protocol.sendSpace( space.id, stock );
 			if( !space.job ) this.selected.length = 0;
@@ -362,7 +428,7 @@ export class Board {
 		console.log( "Player is now moved...", user.name, space.id );
 		let next = -1;;
 		let cur = -1;
-		if( user.space != space.id ){
+		{
 			for( let t = 0; t < this.tokens.length; t++ )  {
 				const tokenList = this.tokens[t];
 				if( tokenList.id === space.id ) {
@@ -374,24 +440,27 @@ export class Board {
 			}
 		}
 	console.log( "player current, next is:", cur, next );
+		if( cur >= 0 ) {	
+			const list = this.tokens[cur];//tokenList.users;
+			for( let u = 0; u < list.users.length; u++ ) {
+				const us = list.users[u];
+				if( us === user ) {
+					list.users.splice( u, 1 );
+					break;
+				}
+			}
+			if( cur!=next && list.users.length === 0 ) {
+				this.tokens.splice( cur, 1 );
+				if( next > cur ) next--;
+			}
+		}
+
 		if( next < 0 ) {
 			this.tokens.push( {id:space.id,space:space,users:[user]} );
 		}else{
 			this.tokens[next].users.push( user );
 		}
 			
-		if( cur >= 0 ) {	
-			const list = this.tokens[cur];//tokenList.users;
-			for( let u = 0; u < list.length; u++ ) {
-				const us = list[u];
-				if( us === user ) {
-					list.splice( u, 1 );
-					break;
-				}
-			}
-			if( list.length === 0 )
-				this.tokens.splice( cur, 1 );
-		}
 
 		user.space = space.id;
 	}
@@ -447,17 +516,42 @@ export class Board {
 			this.sell.space.state = this.state;
 			this.sell.space.drawSell( this.ctx );
 		}
+
+		/*
+			// debug left-right linkages...
+		for( let space of this.spaces ) {
+			if( space.left ) {
+				this.ctx.strokeStyle= "green";
+				this.ctx.beginPath();
+				this.ctx.moveTo( xScale( space.position[0] +0.5), yScale( space.position[1] +0.5) );
+				this.ctx.lineTo( xScale( space.left.position[0] +1.5), yScale( space.left.position[1] +1.5) );
+				this.ctx.stroke();
+			}
+			if( space.right ) {
+				this.ctx.strokeStyle= "red";
+				this.ctx.beginPath();
+				this.ctx.moveTo( xScale( space.position[0] +0.5), yScale( space.position[1] +0.5) );
+				this.ctx.lineTo( xScale( space.right.position[0] +1.5), yScale( space.right.position[1] +1.5) );
+				this.ctx.stroke();
+			}
+		}
+		*/
 	}
 
 	addHighlight( space, stock ) {
-				
-		if( this.selected.push( {space,stock} ) == 1) {
-			if( !this.timer ) this.animate(false);
-
-		}
+		if( !space ) return;
+		if( !this.selected.find( sel=>sel.space === space ) )			
+			if( this.selected.push( {space,stock} ) == 1) {
+				if( !this.timer ) this.animate(false);
+		        
+			}
 	}
 	clearHighlights() {
+		//let needRoll = false;
+		//for( let sel of this.selected ) if( sel.space === this.roll ) needRoll = true;
 		this.selected.length = 0;
+		//if( needRoll ) 
+		//	this.addHighlight( this.roll, null );
 	}
 	clearHighlight( space ) {
 		const id = this.selected.findIndex( s=>s.space===space );
@@ -471,6 +565,7 @@ export class Board {
 
 
 	handleRoll( space ) {
+		this.#gameBoard.thisPlayer.rolled = true;
 		if( this.allowPlay ) {
 			this.clearHighlight( space );
 			protocol.sendRoll();
@@ -479,6 +574,8 @@ export class Board {
 	}
 
 	handleSellStocks( space ) {
+		protocol.sendSelling();
+		this.#gameBoard.sellForm.show( this.#gameBoard.thisPlayer, space.stock );
 	}
 	handleQuit( space ) {
 		protocol.sendQuit();
@@ -491,6 +588,8 @@ export class Board {
 		this.setCurrent( space,stock );
 	}
 	handleStart( space ) {
+		if( this.#gameBoard.rolling )
+			this.addHighlight( this.roll,null );
 		this.setCurrent( space );
 	}
 	handleBroker( space ) {
@@ -519,7 +618,7 @@ class BoardSpace extends StockSpace {
 		const spot = tokenSpots[n];
 		ctx.drawImage( tokens
 				, spot.x, spot.y, tokenInfo.lowres.width/4,tokenInfo.lowres.height/2
-				, xScale( this.position[0]+this.size[0]/10 ), xScale( this.position[1]+this.size[1]*6/8 ), xScale( this.size[0]/4 ), yScale( this.size[0]/4 ) );
+				, xScale( m * 0.4 + this.position[0]+this.size[0]/10 ), xScale( this.position[1]+this.size[1]*6/8 ), xScale( this.size[0]/4 ), yScale( this.size[0]/4 ) );
 	}
 
 	drawCurrent( ctx ) {
@@ -619,6 +718,7 @@ class BoardSpace extends StockSpace {
 	}
 
 	draw( ctx ) {
+		ctx.save();
 		ctx.strokeStyle = "black";
 		ctx.lineWidth = 8;
 		if( this.stock )
@@ -632,7 +732,6 @@ class BoardSpace extends StockSpace {
 		ctx.fillRect( xScale(this.position[0]), yScale(this.position[1]),xScale(this.size[0]), yScale(this.size[1]) );
 		ctx.strokeRect( xScale(this.position[0]), yScale(this.position[1]),xScale(this.size[0]), yScale(this.size[1]) );
 
-		ctx.save();
 		ctx.textAlign= "center";
 
 
@@ -778,5 +877,6 @@ class BoardSpace extends StockSpace {
 		}
 
 		ctx.restore();
+		
 	}
 }

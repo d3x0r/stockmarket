@@ -13,13 +13,13 @@ const JSOX=sack.JSOX;
 import {Game} from "./gameClass.mjs"
 import {User} from "./user.mjs"
 
-const lobby = new Lobby();
+export const lobby = new Lobby();
 
 // lookup with username, gets user state
 const users = new Map();
 
 // create game with name
-const games = new Map();
+export const games = new Map();
 
 export function connect(ws) {
 	//console.log( "Connect:", ws );
@@ -59,7 +59,7 @@ export function accept( ws ) {
 };
 
 
-let joinLobby = null;
+export let joinLobby = null;
 
 function getHandler( ws, shared ) {
 	const parser = JSOX.begin( dispatchMessage );
@@ -95,12 +95,6 @@ function getHandler( ws, shared ) {
 			joinLobby_( user )
 			
 			break;
-		case 'buy':
-			{
-				user.buy( msg.stock, msg.share );
-				user.game.nextTurn();
-			}
-			break;
 		case 'quit':
 			user.quit();
 			break;
@@ -125,7 +119,6 @@ function getHandler( ws, shared ) {
 				if( user.game ) {
 					const msgout = JSOX.stringify( {op:"color", name:user.name, color:msg.color } );
 					for( let player of user.game.users ) {
-						if( user === player ) continue;
 						// tell everyone else in the game about the color change...
 						player.ws.send( msgout );
 					}
@@ -146,14 +139,27 @@ function getHandler( ws, shared ) {
 					peer.ws.send( rdy );
 			}
 			break;			
-		case "space": {				
+		case "space": {	
+				user.choosing = false; // made a choice.				
 				user.move( msg.space, msg.stock );
 			}
 			break;
+		case "buy":
+			console.log( "User bought; sending next turn", msg );
+			user.buy( msg );
+			break;
+		case "sell":
+			console.log( "User sold something; sending next turn", msg );
+			user.sell( msg );
+			break;
 		case "no-sale":
 			console.log( "User did not buy; sending next turn" );			
-			user.game.nextTurn();
-			user.game.flush();
+			if( user.buying || user.selling ) {
+				user.buying = user.selling = false;
+				if( user.rolled )
+					user.game.nextTurn();
+				user.game.flush();
+			}
 			break;
 		case 'game': {
 			const oldGame = games.get( msg.name );
@@ -190,7 +196,6 @@ function getHandler( ws, shared ) {
 			const ur = lobby.users.splice( userId, 1 );
 			thisuser.reset();
 		}
-
 		const gameJoin = JSOX.stringify( { op:"player", user:thisuser } );
 		// before adding this user, tell all old users about this new user.
 		for( let user of game.users ) {
@@ -198,7 +203,8 @@ function getHandler( ws, shared ) {
 		}
 
 		game.users.push( user );
-		user.game = game;
+		user.game = game; // setting user game sets inPlay to false.
+		user.inPlay = game.inPlay;
 
 		const hello = JSOX.stringify( { op:"data", stocks:stocks, board:board, game:game } );
 		user.ws.send( hello );
