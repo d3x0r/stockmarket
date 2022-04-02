@@ -26,11 +26,12 @@ const extMap = { '.js': 'text/javascript'
 
 export function openServer( opts, cb )
 {
+	const requests = [];
 	var serverOpts = opts || {port:Number(process.argv[2])||process.env.PORT||8888} ;
 	var server = sack.WebSocket.Server( serverOpts )
 	var disk = sack.Volume();
 	//console.log( "disk?", disk, Object.getPrototypeOf( disk ) );
-	console.log( "serving on " + serverOpts.port );
+	//console.log( "serving on " + serverOpts.port );
 	//console.log( "with:", disk.dir() );
 
 	server.onrequest = function( req, res ) {
@@ -48,10 +49,14 @@ export function openServer( opts, cb )
 		var contentType = extMap[extname] || "text/plain";
 
 		do {
-			console.log( ":", extname, filePath )
+			//console.log( ":", extname, filePath )
 			if( disk.exists( filePath ) ) {
 				res.writeHead(200, { 'Content-Type': contentType });
-				console.log( "Read:", "." + req.url );
+				if( requests.length === 0 )
+					setTimeout( logRequests, 100 );
+				requests.push( req.url );
+
+				//console.log( "Read:", "." + req.url );
 				res.end( disk.read( filePath ) );
 				break;
 			} else {
@@ -60,8 +65,7 @@ export function openServer( opts, cb )
 					filePath += ".html";
 					continue;
 				}
-
-				console.log( "Failed request: ", req );
+				requests.push( "Failed request: " + req );
 				res.writeHead( 404 );
 				res.end( "<HTML><HEAD>404</HEAD><BODY>404</BODY></HTML>");
 				break;
@@ -71,8 +75,13 @@ export function openServer( opts, cb )
 
 	server.onaccept = accept;
 	server.onconnect = connect;
+	function logRequests() {
+		const log = requests.join();
+		requests.length = 0;
+		console.log( "Requests:", log );
+	}
 }
 
-console.log( "module?",  import.meta );
+//console.log( "module?",  import.meta );
 //if( !module.parent )
 	openServer();

@@ -90,13 +90,14 @@ export class PlayerStatusForm extends Popup {
 			}
 		});
 		protocol.on( "roll", (msg)=>{
-			console.log( "got roll:", msg );
+			//console.log( "got roll:", msg );
 			this.lastRoll_ = `${msg.count} with ${msg.d1} and ${msg.d2}`;
 			this.lastRoll.refresh();
 		} );
 		protocol.on( "player", (msg)=>{
-			console.log( "got roll:", msg );
-			this.lastRoll_ = "new roll";
+			// new player joined the game, need to give him a status line?
+			//console.log( "got player:", msg );
+			//this.lastRoll_ = "new roll";
 		} );
 
 		protocol.on( "space", (msg)=>{

@@ -154,7 +154,7 @@ export class GameBoard extends Popup {
 		} );
 		protocol.on( "roll", (msg)=>{
 			this.rolling = false;
-			console.log( "got roll:", msg );
+			//console.log( "got roll:", msg );
 		} );
 		protocol.on( "turn", (msg)=>{
 			this.board.allowPlay = true;
@@ -599,8 +599,8 @@ export class Board {
 		this.setCurrent( space );
 	}
 
-	handleSplit( space ) {
-		this.setCurrent( space );
+	handleSplit( space, stock ) {
+		this.setCurrent( space, stock );
 	}
 }
 

@@ -49,13 +49,11 @@ export function connect(ws) {
 
 
 export function accept( ws ) {
-		//if( cb ) return cb(ws)
-		const protocol = ws.headers["Sec-WebSocket-Protocol"];
-		console.log( "Connection received with : ", protocol, " path:", ws );
-           //     if( process.argv[2] == "1" )
-	   //     	this.reject();
-           //     else
-			this.accept();
+//		const protocol = ws.headers["Sec-WebSocket-Protocol"];
+//		const url = ws.url;
+
+	//console.log( "Connection received with : ", protocol, " path:", ws );
+	this.accept();
 };
 
 

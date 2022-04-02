@@ -90,7 +90,7 @@ export function doReopen() {
 		let ws = null;
 		return function handleGameProtocol( evt ) {
 			ws = evt.target;
-			console.log ("GameEvent:", evt, this );
+			//console.log ("GameEvent:", evt, this );
 			parser.write( evt.data );
 		} 
 		function dispatchMessage( msg ) {

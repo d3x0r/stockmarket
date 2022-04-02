@@ -105,9 +105,9 @@ export class User {
 	pay( cash ) {
 		if( cash ) { // ignore any 0 change.
 			// that this is done is sent later with this updated balance.
-			console.log( "CASH Change:", this, cash );
+			//console.log( "CASH Change:", this, cash );
 			this.cash += cash;
-			if( isNaN( this.cash ) ) debugger;
+			//if( isNaN( this.cash ) ) debugger;
 			const msg = JSOX.stringify( {op:"pay",user:this.name, balance:this.cash, credit:this.#space_.pay } )
 			if( msg ) for( let peer of this.game.users ) peer.queue.push(msg);
 		}
