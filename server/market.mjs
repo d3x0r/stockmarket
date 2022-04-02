@@ -36,7 +36,7 @@ export class Market {
 			}
 			
 		}
-		console.log( "market:", this );
+		//console.log( "market:", this );
 	}
 
 

@@ -40,7 +40,7 @@ export class Game {
 				this.#starts.push( {space:space.id,stock:null} );
 	
 		} 
-		console.log( "STARTS?", this.#starts );
+		//console.log( "STARTS?", this.#starts );
 	}
 	roll(forUser) {
 		//console.log( "Current:", this.currentPlayer, this.users
