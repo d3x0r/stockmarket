@@ -18,6 +18,9 @@ class GameState extends Events {
 	events = new Events();
 }
 
+export function sendSelling( n) {
+	send( {op:"selling" } );
+}
 export function sendColor(n) {
 	send( {op:"color", color:n } );
 }
@@ -115,6 +118,11 @@ function reopen() {
 	}
 }
 
+function setPlayerColor( player, color ) {
+		for( let u of gameState.game.users ) {
+			if( u.name === player ) u.color = color;
+		}
+	}        
 
 
 function parseMessage( ws, msg ) {
@@ -130,9 +138,13 @@ function parseMessage( ws, msg ) {
 				break;
 			}
 		}
-		if( !gameState.thisPlayer) debugger;
+		//if( !gameState.thisPlayer) debugger;
 		//gameEvents = new Events();
 		gameEvents.on( "load" );
+		break;
+	case "color":
+		setPlayerColor( msg.name, msg.color );
+		gameEvents.on( msg.op, msg );
 		break;
 	case "market":
 		gameState.game.marketLine = msg.line;
@@ -144,11 +156,32 @@ function parseMessage( ws, msg ) {
 		for( let player of gameState.game.users ) {
 			if( player.name === msg.name) {
 				gameState.currentPlayer = player;
+				gameState.currentPlayer.rolled = false;
 				break;
 			}
 		}
 		gameState.game.currentPlayer = msg.current;
 		gameEvents.on( msg.op, msg );
+		break;
+	case "stock":
+		{
+			
+			for( let player of gameState.game.users ) {
+				if( player.name === msg.user) {
+					for( let stock of player.stocks ) {
+						if( stock.id === msg.stock.id ) {
+							if( player.name === gameState.username ) {
+								// tell localUI(s)
+								gameEvents.on( msg.op, msg );
+							}
+							stock.shares = msg.stock.shares;
+							break;
+						}
+					}
+					break;
+				}
+			}
+		}
 		break;
 	case "player":
 		{

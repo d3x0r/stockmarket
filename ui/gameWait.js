@@ -45,7 +45,6 @@ export class GameWait extends Popup {
 		protocol.on( "ready", (msg)=>this.readyPlayer( msg.user ) );                
 		protocol.on( "unready", (msg)=>this.unreadyPlayer( msg.user ) );                
 		protocol.on( "go", (msg)=>this.readyPlayer( msg.user ) );                
-		protocol.on( "color", (msg)=>this.setPlayerColor( msg.user, msg.color ) );
 
                 this.readyButton = popups.makeButton( this, "Ready", ()=>{
 			this.ready = !this.ready;
@@ -78,12 +77,6 @@ export class GameWait extends Popup {
 				this.readyButton.buttonInner.textContent = "Ready";
 		}
 	}
-
-	setPlayerColor( player, color ) {
-		for( let u of protocol.gameState.game.users ) {
-			if( u.name === player ) u.color = color;
-		}
-	}        
 
 	addToken( row, c ) {
 		

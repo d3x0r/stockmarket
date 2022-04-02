@@ -1,25 +1,34 @@
 
 import stocks from "./stocks.jsox"
 import board from "./board.jsox"
-
+import {joinLobby,games,lobby} from "./game.mjs"
 
 
 class UserStock {
 	id = 0;
 	shares = 0;
 	#stock = null;
-	constructor(stock) { this.#stock = stock; this.id = stock.ID; } 
+	constructor(stock) { this.#stock = stock; this.id = stock.id; } 
+	get value() { return this.#stock.value; }
+	get dividend() { return this.#stock.dividend; }
 }
 
 export class User { 
 	name = '';
 	#ready = false;
-	stocks = stocks.stocks.map( stock=>(new UserStock(stock)) )
+	stocks = [];//stocks.stocks.map( stock=>(new UserStock(stock)) )
 	cash = board.startCash;
-	space = 0;
+	space = 0; // space ID the player is on
 	movingLeft = true;
-	inPlay = false;
+	inPlay = false;  // duplicate of #ready really
 	meeting = 0;
+	rolled = false;
+	// inDebt == cash < 0
+	buying = false;
+	choosing = false;
+	selling = false; // volentary sale before user rolls...
+
+	
 	color = Math.floor(Math.random()*8);
 
 	#queue = [];
@@ -36,16 +45,17 @@ export class User {
 	get space_() { return this.#space_}
 	get ready(){ return this.#ready }
 	set ready(val){
-		this.inPlay = val; // sort of a duplicate ready status that is returned on state reload.
 		if( val ) {
 			this.#ready = true;
 			if( this.#game && ( !this.#game.inPlay ) ) {
 				for( let user of this.#game.users ) {
 					if( !user.ready ) return;
 				}
+				console.log( "All Players ready...." );
 				this.#game.inPlay = true;	
 				const gomsg = '{op:go}';  // this clears the wait message
 				for( let user of this.#game.users ) {
+					user.inPlay = true; // this player entered into the game...
 					user.ws.send( gomsg );
 				}
 		
@@ -59,8 +69,22 @@ export class User {
 			this.#ready = false;
 		}
 	}
-	get game() { return this.#game; }
-	set game(val) { this.#game=val; }
+	get game() { 
+		return this.#game; 
+	}
+	set game(val) { 
+		// use the stocks from the game, so stocks can ask for value.
+		this.stocks = val.stocks.map( stock=>(new UserStock(stock)) )
+		// on joining a game a user is in a game until they quit...
+		this.buying = false;
+		this.choosing = false;
+		this.selling = false;
+		this.#ready = false;
+		this.inPlay = false;
+		//this.color = Math.floor( Math.random() * 8);
+
+		this.#game=val; 
+	}
 	get ws() { return this.#ws; }
 	set ws(val) { this.#ws=val; }
 
@@ -79,11 +103,20 @@ export class User {
 	}
 
 	pay( cash ) {
-		// that this is done is sent later with this updated balance.
-		console.log( "CASH Change:", this, cash );
-		this.cash += cash;
-		const msg = JSOX.stringify( {op:"pay",user:this.name, balance:this.cash, credit:this.#space_.pay } )
-		if( msg ) for( let peer of this.game.users ) peer.queue.push(msg);
+		if( cash ) { // ignore any 0 change.
+			// that this is done is sent later with this updated balance.
+			console.log( "CASH Change:", this, cash );
+			this.cash += cash;
+			if( isNaN( this.cash ) ) debugger;
+			const msg = JSOX.stringify( {op:"pay",user:this.name, balance:this.cash, credit:this.#space_.pay } )
+			if( msg ) for( let peer of this.game.users ) peer.queue.push(msg);
+		}
+	}
+
+	charge(cash ) {
+		// returns inDebt
+		this.pay( -cash );
+		return ( this.cash < 0 );
 	}
 
 	take( stockId, shares ) {
@@ -112,12 +145,15 @@ export class User {
 
 	roll() {
 	
-		return this.game.roll(this);
+		this.game.roll(this);
+		this.rolled = true;
 	}
 
 	move( spaceId, stockId ) {
-		this.space = spaceId;
-		this.#space_ = this.game.move( this.name, spaceId, stockId );
+		if( this.space !== spaceId ) {
+			this.space = spaceId;
+			this.#space_ = this.game.move( this.name, spaceId, stockId );
+		}
 	}
 
 	rename(newname) {
@@ -146,16 +182,39 @@ export class User {
 		} );
 	}
 
-	buy( stockId, shares ) {
-		this.stocks.find( (stock)=>{
+	buy( msg ) {
+		//stockId, shares
+		const stockId = msg.stock;
+		const shares = msg.shares;
+		const stock = this.stocks.find( (stock)=>{
 			
 			if( stock.id === stockId ) {
+				const value = stock.value;
+				console.log( "Verify that player has cash?", this.cash, value );
+				this.cash -= shares*value;
 				stock.shares += shares;
-				
 				return true;
 			}
 		} );
+		this.game.buy( this, stock );
 	}	
+
+	sell( msg ) {
+		const stockId = msg.stock;
+		const shares = msg.shares;
+		const stock = this.stocks.find( (stock)=>{
+			
+			if( stock.id === stockId ) {
+				//const value = 
+				const value = stock.value;
+				stock.shares -= shares;
+				this.cash += shares*value;
+				return true;
+			}
+			return false;
+		} );
+		this.game.sell( this, stock );
+	}
 
 	sendMoney( val ) {
 		const peers = this.#game.users;

@@ -161,6 +161,7 @@ export class BuyForm extends Popup {
 	buy() {
 		
 		protocol.sendBuy( this.stock, this.shareCount );
+		this.hide();
 	}
 
 	set cash( val ) {

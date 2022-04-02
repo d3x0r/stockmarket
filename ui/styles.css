@@ -437,7 +437,48 @@
   
 }
 
+.formContainer-status {
+	background:#808080f0;
+	color:white;
+}
 .selected {
 	border-color:red;
 	background:#00000030;
+}
+
+
+.status-player-frame{
+	display:inline-block;
+}
+.stock-table-set {
+	display:inline-block;
+}
+.stock-table-status {
+
+}
+
+.player-status-row {
+	border-radius:5px;
+	border-style:solid;
+	border-color:black;
+	border-width:1px;
+	background:#ffeeee;
+	color:#ff33ff;
+	font-size:150%;
+	
+}
+
+.player-status-name {
+}
+
+[class^="player-stock-status-row"]{
+	display:table-row;
+}
+[class^="player-stock-status-cell"] {
+	display:table-cell;
+	
+}
+
+.player-status-status {
+	float:right;
 }
