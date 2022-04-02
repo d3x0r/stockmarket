@@ -4,9 +4,7 @@
 This is a Node.JS server using [sack.vfs](https://github.com/d3x0r/sack.vfs) for websockets and HTTP service; [JSOX](https://github.com/d3x0r/jsox) for message encoding; 
 [@d3x0r/Popups](https://github.com/d3x0r/popups) for user interface dialogs.
 
-Serves a webpage to play a game.
-
-![Screenshot](CoverImage.png)
+Live [Demo](https://wdc-stock-market.herokuapp.com) at heroku.
 
 ## Howto
 
@@ -34,6 +32,9 @@ also pay a dividend to each player, for each share they own of a stock.
 Squares are also marked with `Up` and `Down` indicators which change the current market value.  When you move to these squares, this change is applied immediately.
 
 `Quit` allows you to sign out of a game.  If you merely close your client and disconnect, your game will remain with you as a participant for the next time you login.
+
+![Screenshot](CoverImage.png)
+
 
 ## Privacy Statement
 
