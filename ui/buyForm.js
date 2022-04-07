@@ -12,16 +12,32 @@ export class BuyForm extends Popup {
 	// buttons to control share/cash - style class parts change
 	shareMode = null;
 	cashMode = null;
-
+	useCash = false;
+	change = 0;
 	shareCount = 0;
 	cash = 0;
 	stock = null;
+	subs = null;
+	adds = null;
+	limit = Infinity;
         
 	constructor( parent ) {
         	super( "Buy Stocks", parent, {suffix:"-buy"} );
 
 		let row,label;
-                
+                protocol.on( "market", ()=>{
+					if( this.stock ) {
+						if( this.useCash ) {
+							const cash = this.shareCount * this.stock.value;
+							if( cash > this.cash ) this.cash = cash;
+							this.change = this.cash - cash;
+
+						}else
+							this.cash = this.shareCount * this.stock.value;
+						this.sellsFor.textContent = '$'+this.stock.value;
+						this.refresh();
+					}
+				})
                 row = document.createElement( "div" );
                 row.className = 'stock-buy-row-stock';
                 label = document.createElement( "span" );
@@ -95,22 +111,24 @@ export class BuyForm extends Popup {
 
 
        		row.className = "stock-buy-container-buttons";
-		[1,5,10,50,100,500].forEach( val=>{
+		this.adds = [1,5,10,50,100,500].map( val=>{
 	                const button = popups.makeButton( row, ''+val,((val)=>( ()=>this.press( val ) ))(val) );
                         button.className = "stock-buy-button-add";
                         button.buttonInner.className = "stock-buy-inner-button-add";
 			button.buttonInner.style.width = "";
 			button.style.width = '';
+			return button;
                 } );
                         
                 row.appendChild( document.createElement( "br" ) );
 
-		[-1,-5,-10,-50,-100,-500].forEach( val=>                {
+		this.subs = [-1,-5,-10,-50,-100,-500].map( val=>                {
 	                const button = popups.makeButton( row, ''+val,((val)=>( ()=>this.press( val ) ))(val) ) 
                         button.className = "stock-buy-button-sub";
                         button.buttonInner.className = "stock-buy-inner-button-sub";
 			button.buttonInner.style.width = "";
 			button.style.width = '';
+			return button;
                 });
 
                 row.appendChild( document.createElement( "br" ) );
@@ -141,10 +159,18 @@ export class BuyForm extends Popup {
 		this.hide();
         }
 
-	show( player, stock ) {
-		this.stock = stock;
+	show( player, stock, limit ) {
+		this.limit = limit;
+		if( limit === 1 ) {
+			this.hideButtons();
+		}else {
+			this.showButtons();
 
-		console.log( "Is player and stock enough?", player, stock );
+		}
+		this.stock = stock;
+		this.change = 0;
+		this.cash = this.shareCount * this.stock.value;
+
 		for( let pstock of player.stocks ) {
 			if( pstock.id === stock.id ) {
 				this.owned.textContent = pstock.shares;
@@ -153,9 +179,29 @@ export class BuyForm extends Popup {
 				break;
 			}
 		}
+		this.refresh();
 		super.show();
 		this.center();
+	}
 
+	hideButtons() {
+		for( let i = 1; i < this.adds.length; i++ ){
+			this.adds[i].hide();
+			this.subs[i].hide();
+		}
+		this.shareCount = 1;
+
+		this.refresh();
+	}
+
+	showButtons() {
+		for( let i = 1; i < this.adds.length; i++ ){
+			this.adds[i].show();
+			this.subs[i].show();
+		}
+		this.shareCount = 0;
+
+		this.refresh();
 	}
 
 	buy() {
@@ -189,25 +235,32 @@ export class BuyForm extends Popup {
 		this.cashMode.className = "stock-buy-button-disable-cash";
 		this.cashMode.buttonInner.className = "stock-buy-inner-button-disable-cash";
 	}
+	refresh() {
+
+		this.shares.value = this.shareCount;
+
+		if( this.change )
+			this.cost.textContent = '$'+this.cash + " change: $" + this.change;
+		else
+			this.cost.textContent = '$'+this.cash;
+
+	}
 	press( n ) {
 		console.log( "Want to add N shares(dollars?", n );
-		let change = 0;
+		this.change = 0;
 		if( this.useCash ) {
 			this.cash += n;
 			this.shareCount = Math.floor( this.cash / this.stock.value );
-			change = this.cash - (this.stock.value * this.shareCount);					
+			if( this.shareCount > this.limit ) this.shareCount = this.limit;
+			this.change = this.cash - (this.stock.value * this.shareCount);					
 		} else {
 			this.shareCount += n;
+			if( this.shareCount > this.limit ) this.shareCount = this.limit;
 			if( this.shareCount < 0 ) this.shareCount = 0;
 
 			this.cash = this.shareCount * this.stock.value;
 			// change is 0.
 		}
-		this.shares.value = this.shareCount;
-		if( change )
-			this.cost.textContent = '$'+this.cash + " change: $ " + change;
-		else
-			this.cost.textContent = '$'+this.cash;
-
+		this.refresh();
 	}
 }

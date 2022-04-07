@@ -17,10 +17,10 @@ export class PlayerStatusForm extends Popup {
 	playerCash = null;
 	playerValue = null;
 
-	playerStatus_ = "...";
+	playerStatus_ = "Choose Profession";
 
-	playerCash_ = "$123";
-	playerValue_ = "$456";
+	playerCash_ = 12300;
+	playerValue_ = 456;
 	lastRoll_ = "DICE";
 
 	player = null;
@@ -29,16 +29,24 @@ export class PlayerStatusForm extends Popup {
 	otherPlayersFrame = document.createElement( 'div' );
 
 	constructor( parent, player, stocks ) {
-        	super( "Player Status...", parent, {suffix:"-status", noCaption:true} );
+        super( "Player Status...", parent, {suffix:"-status", noCaption:true} );
 		this.player = player;
 		this.stocks = stocks;
 
 		const playerFrame = document.createElement( 'div' );
 		playerFrame.className = "status-player-frame";
 
+		if( self.space === 0 ) {
+			this.playerStatus_ = "Choose Profession";
+		}
+		else if( true ) {
+			this.playerStatus_ = "Other Status";
+		}
+
+
 		this.playerStatus = popups.makeTextField( playerFrame, this, "playerStatus_", "Status?" );
-		this.playerCash = popups.makeTextField( playerFrame, this, "playerCash_", "Cash" );
-		this.playerValue = popups.makeTextField( playerFrame, this, "playerValue_", "Total Value" );
+		this.playerCash = popups.makeTextField( playerFrame, this, "playerCash_", "Cash", true );
+		this.playerValue = popups.makeTextField( playerFrame, this, "playerValue_", "Total Value", true );
 		this.lastRoll = popups.makeTextField( playerFrame, this, "lastRoll_", "Last Roll" );
 
 		//this.playerValue = popups.makeTextField( playerFrame, this, "playerValue_", "Total Value" );
@@ -67,17 +75,21 @@ export class PlayerStatusForm extends Popup {
 
 
 		// position roughly...
-		this.divFrame.style.left="18.75%";
-		this.divFrame.style.top="25%";
+		this.divFrame.style.left="92vh";
+		this.divFrame.style.top="5vh";
+
+
 
 		protocol.on( "buying", (msg)=>{
 			const playerRow = this.playerRows.find( row=>row.player.name===msg.name );
+			//console.log( "Deselect Roll.");
 			if( playerRow ) {
 				playerRow.refresh( "Buying" );
 			}
 		});
 		protocol.on( "selling", (msg)=>{
 			const playerRow = this.playerRows.find( row=>row.player.name===msg.name );
+			console.log( "Deselect Roll.");
 			if( playerRow ) {
 				playerRow.refresh( "Selling" );
 			}
@@ -89,6 +101,23 @@ export class PlayerStatusForm extends Popup {
 				playerRow.refresh( "Moving" );
 			}
 		});
+
+		const handleTurn =  (msg)=>{
+			if( msg.name === protocol.gameState.username ){
+				this.playerStatus_ = "Roll or Sell";
+				this.playerStatus.refresh();
+			} else {
+				this.playerStatus_ = "Waiting for roll... (sell?)";
+				this.playerStatus.refresh();
+			}
+		};
+
+		protocol.on( "start",  handleTurn );
+		protocol.on( "turn", handleTurn );
+		protocol.on( "choose", (msg)=>{
+			this.playerStatus_ = "Choose New Space";
+			this.playerStatus.refresh();
+		} );
 		protocol.on( "roll", (msg)=>{
 			//console.log( "got roll:", msg );
 			this.lastRoll_ = `${msg.count} with ${msg.d1} and ${msg.d2}`;
@@ -106,12 +135,12 @@ export class PlayerStatusForm extends Popup {
 				playerRow.refresh( "Moving" );
 			}
 		});
-
+		protocol.on( "pay", (msg)=>this.refresh() );
 		protocol.on( "market", (msg)=>this.refresh() );
 		protocol.on( "stock", (msg)=>this.refresh() );
 		protocol.on( "give", (msg)=>this.refresh() );
 		this.refresh();
-        }
+    }
 
 
 	removePlayer( name ) {
@@ -167,24 +196,24 @@ export class PlayerStatusForm extends Popup {
 		};
 		
 
-                //row = document.createElement( "div" );
-                row.row.className = 'player-stock-status-row-stock-'+stock.symbol;
+		//row = document.createElement( "div" );
+		row.row.className = 'player-stock-status-row-stock-'+stock.symbol;
 
 
-                row.label.className = 'player-stock-status-cell-label-' + stock.symbol;
-                row.label.textContent = stock.name;
+		row.label.className = 'player-stock-status-cell-label-' + stock.symbol;
+		row.label.textContent = stock.name;
 
-                row.value.className = 'player-stock-status-cell-value-' + stock.symbol;
+		row.value.className = 'player-stock-status-cell-value-' + stock.symbol;
 		row.value.textContent = stock.symbol;
 
-                row.price.className = 'player-stock-status-cell-price-' + stock.symbol;
+		row.price.className = 'player-stock-status-cell-price-' + stock.symbol;
 		row.price.textContent = "$??";
 
-                row.row.appendChild( row.label );
-                row.row.appendChild( row.price );
-                row.row.appendChild( row.value );
+		row.row.appendChild( row.label );
+		row.row.appendChild( row.price );
+		row.row.appendChild( row.value );
 
-                table.appendChild( row.row );
+		table.appendChild( row.row );
 		this.rows.push( row );
 	
 	}
@@ -196,8 +225,20 @@ export class PlayerStatusForm extends Popup {
 		//super.show();
 	}
 	refresh( ) {
+		const self = protocol.gameState.thisPlayer;
 
+
+		this.playerValue_ = self.cash;
+		for( let stock of self.stocks ){
+			const stockDef = this.stocks.find( def=>def.id === stock.id );
+			//console.log( "Adding shares:", stock, stock.shares, stockDef.value )
+			this.playerValue_ += stock.shares * stockDef.value;
+		}
+		this.playerValue_ *= 100;
+		this.playerCash_ = protocol.gameState.thisPlayer.cash * 100;
 		
+		this.playerValue.refresh();
+		this.playerCash.refresh();
 		for( let row of this.rows ) {
 			row.price.textContent = '$' + row.stock.value;
 			row.value.textContent = '$' + (row.stock.value * row.userStock.shares );

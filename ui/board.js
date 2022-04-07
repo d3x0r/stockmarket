@@ -245,7 +245,7 @@ export class GameBoard extends Popup {
 			for( let space of this.board.spaces ) {
 				let c;
 				if( c = msg.choices.find( c=>c.space === space.id ) ) {
-					this.board.addHighlight( space, c.stock );
+					this.board.addHighlight( space, c.stock, c.stockDir );
 				}
 			}
 			// refresh overlay
@@ -318,7 +318,7 @@ export class GameBoard extends Popup {
 	mouseup(evt){
 		if( this.isIn ) {
 			if( this.isIn === this.isDown ) {
-				this.isDown.space.mode( this.isDown.stock );
+				this.isDown.space.mode( this.isDown.stock,this.isDown.stockDir );
 			}
 		}
 		this.isDown = null;
@@ -361,7 +361,7 @@ export class Board {
 	//currentSpace = null;
 	state = 0;
 	roll = null;
-	starts = [];
+	//starts = [];
 	jobs = [];
 	quit = {space:null,stock:null};
 	sell = {space:null,stock:null};
@@ -382,7 +382,7 @@ export class Board {
 		board.spaces.forEach( (space)=>new BoardSpace( this, space ) );		
 		this.spaces.forEach( space=>{
 			if( space.roll) this.roll = space;
-			if( space.start) this.starts.push( space );
+			//if( space.start) this.starts.push( space );
 			if( space.job) this.jobs.push( space );
 			if( space.quit) this.quit.space = space;
 			if( space.sellStocks) this.sell.space = space;
@@ -395,13 +395,13 @@ export class Board {
 		//this.jobs.forEach( job=>this.addHighlight( job ) );
 	}
 
-	setCurrent(space,stock) {
+	setCurrent(space,stock, stockDir) {
 		if( space != this.#gameBoard.currentSpace ) {
 			if( !this.#gameBoard.thisPlayer.rolled && this.#gameBoard.thisPlayer === this.#gameBoard.currentPlayer && protocol.gameState.game.inPlay )
 				this.addHighlight( this.roll );
 
 			this.#gameBoard.currentSpace = space;
-			protocol.sendSpace( space.id, stock );
+			protocol.sendSpace( space.id, stock, stockDir );
 			if( !space.job ) this.selected.length = 0;
 			return;
 		}
@@ -538,10 +538,10 @@ export class Board {
 		*/
 	}
 
-	addHighlight( space, stock ) {
+	addHighlight( space, stock, stockDir ) {
 		if( !space ) return;
 		if( !this.selected.find( sel=>sel.space === space ) )			
-			if( this.selected.push( {space,stock} ) == 1) {
+			if( this.selected.push( {space,stock, stockDir} ) == 1) {
 				if( !this.timer ) this.animate(false);
 		        
 			}
@@ -599,8 +599,8 @@ export class Board {
 		this.setCurrent( space );
 	}
 
-	handleSplit( space, stock ) {
-		this.setCurrent( space, stock );
+	handleSplit( space, stock, stockDir ) {
+		this.setCurrent( space, stock, stockDir );
 	}
 }
 

@@ -139,7 +139,7 @@ function getHandler( ws, shared ) {
 			break;			
 		case "space": {	
 				user.choosing = false; // made a choice.				
-				user.move( msg.space, msg.stock );
+				user.move( msg.space, msg.stock, msg.stockDir );
 			}
 			break;
 		case "buy":

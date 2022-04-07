@@ -1,3 +1,7 @@
+body {
+	background:#555;
+}
+
 .formContainer-login {
 	font-size:250%;
 	visibility:visible;
@@ -451,10 +455,11 @@
 	display:inline-block;
 }
 .stock-table-set {
-	display:inline-block;
+	/*display:inline-block;*/
 }
 .stock-table-status {
-
+	display:table;
+	width:20em;
 }
 
 .player-status-row {
@@ -475,10 +480,17 @@
 	display:table-row;
 }
 [class^="player-stock-status-cell"] {
-	display:table-cell;
-	
+	display:table-cell;	
 }
 
 .player-status-status {
 	float:right;
+}
+.formContainer-status {
+	left:90vh;
+	top:0vh;
+}
+.frameCaption-status {
+	font-size:100%;
+	background:#9f9366;
 }

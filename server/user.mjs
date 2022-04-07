@@ -27,7 +27,6 @@ export class User {
 	buying = false;
 	choosing = false;
 	selling = false; // volentary sale before user rolls...
-
 	
 	color = Math.floor(Math.random()*8);
 
@@ -36,6 +35,8 @@ export class User {
 	#game = null;
 	#space_ = null;
 	#turn = false;
+
+	meetingDirection = false;
 
 	set moveEndsTurn( val) {
 		this.#turn = val;
@@ -149,8 +150,11 @@ export class User {
 		this.rolled = true;
 	}
 
-	move( spaceId, stockId ) {
+	move( spaceId, stockId, stockDir ) {
 		if( this.space !== spaceId ) {
+			this.meeting = stockId;
+			this.meetingDirection = stockDir;
+			this.movingLeft = stockDir;
 			this.space = spaceId;
 			this.#space_ = this.game.move( this.name, spaceId, stockId );
 		}
