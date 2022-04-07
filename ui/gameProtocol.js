@@ -38,8 +38,8 @@ export function sendBuy( stock, shares ) {
 	send( {op:"buy", stock:stock.id, shares } );
 }
 
-export function sendSpace( id, stock ) {
-	send( {op:"space", space:id, stock:stock } );
+export function sendSpace( id, stock, stockDir ) {
+	send( {op:"space", space:id, stock:stock, stockDir:stockDir } );
 }
 
 export function sendRoll() {
@@ -141,15 +141,13 @@ function parseMessage( ws, msg ) {
 		//if( !gameState.thisPlayer) debugger;
 		//gameEvents = new Events();
 		gameEvents.on( "load" );
-		break;
+		return;
 	case "color":
 		setPlayerColor( msg.name, msg.color );
-		gameEvents.on( msg.op, msg );
 		break;
 	case "market":
 		gameState.game.marketLine = msg.line;
 		// allow UI to get triggered to read new value... (it shouldn't use msg...)
-		gameEvents.on( msg.op, null );
 		break;
 	case 'turn':
 	case 'start':
@@ -161,7 +159,6 @@ function parseMessage( ws, msg ) {
 			}
 		}
 		gameState.game.currentPlayer = msg.current;
-		gameEvents.on( msg.op, msg );
 		break;
 	case "stock":
 		{
@@ -182,7 +179,7 @@ function parseMessage( ws, msg ) {
 				}
 			}
 		}
-		break;
+		return;
 	case "player":
 		{
 			const old = gameState.players.find( player=>player.name===msg.user.name );
@@ -192,9 +189,9 @@ function parseMessage( ws, msg ) {
 		}
 		/* fallthrough */
 	default: // just make everything dispatched to callbacks.
-		gameEvents.on( msg.op, msg );
 		break;
 	}
+	gameEvents.on( msg.op, msg );
 
 }
 

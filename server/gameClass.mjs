@@ -94,7 +94,7 @@ export class Game {
 	move(name, spaceId, stockId ) {
 		const space = this.#spaces.find( space=>space.id === spaceId );
 		if( space ) { // there really better be a space, an else can not be caught in coverage; without state/protocol hacks
-			const msg=JSOX.stringify( {op:"space", name, id:spaceId } );
+			const msg=JSOX.stringify( {op:"space", name, id:spaceId, stock:stockId } );
 			let go = false;
 			for( let user of this.users ) {
 				// send update to everyone
@@ -273,7 +273,7 @@ export class Game {
 
 	getMoves( user, space, number, left ) {
 		// gets what moves a player can do, and tells that player.
-		let choices = [{stock:space.stock?.id||0,space:space,dir:left}];
+		let choices = [{stock:space.stock?.id||0,space:space,dir:left, split:space.split }];
 		{
 			let n = 0;
 			console.log( "--------- Getting moves", space, left );
@@ -286,15 +286,19 @@ export class Game {
 						choices[c].space = choices[c].space.left;
 					else
 						choices[c].space = choices[c].space.right;
-					if( !was.split && was.meeting ) { // don't go back into a meeting
-						console.log( "came from a board space that has a meting... add fork:", was.meeting, was.meetingDirection );
-						choices.push( {stock:was.stock, space:was.meeting, dir:was.meetingDirection} );
+					if( !choices[c].split && was.meeting ) { // don't go back into a meeting
+						const userStock = user.stocks.find( stock=>stock.id===was.stock.id );
+						if( userStock?.shares ) {
+							console.log( "came from a board space that has a meting... add fork:", was.meeting, was.meetingDirection );
+							choices.push( {stock:was.stock.id, space:was.meeting, dir:was.meetingDirection, split:true} );
+						}
 					}
+					choices[c].split = was.split;
 				}
 			}
 		}		
 		if( user )  {
-			user.ws.send( JSOX.stringify( {op:"choose", choices:choices.map( choice=>({ space:choice.space.id, stock:choice.stock?choice.stock.id:0 }) ) } ) );
+			user.ws.send( JSOX.stringify( {op:"choose", choices:choices.map( choice=>({ space:choice.space.id, stock:choice.stock, stockDir:choice.dir }) ) } ) );
 			user.choosing = true;
 			if( this.users.length > 1 ) {
 				const outmsg = JSOX.stringify( {op:"choosing", user:user.name } );
