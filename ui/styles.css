@@ -267,7 +267,7 @@ body {
 }
 
 [class^="stock-sell-button"] {
-			font-size:100%;
+			font-size:85%;
 			border-radius:10px;
 			background:linear-gradient(rgb(118 131 92), #e2d38b,rgb(88 102 59) );
 			padding:0px;
@@ -298,6 +298,10 @@ body {
 
 [class^="stock-sell-inner-button-enable"] {
 	background: darkgreen;
+}
+
+.stock-sell-value-amount {
+	background: #030;
 }
 
 .formContainer-stock {
@@ -375,7 +379,6 @@ body {
 	
 	border-width:4px;
 	border-style:solid;
-	#border-right-style:none;
 }
 
 [class$="-MYTG"] {
@@ -383,7 +386,6 @@ body {
 	
 	border-width:4px;
 	border-style:solid;
-	#border-right-style:none;
 }
 
 [class$="-WSTP"] {
@@ -391,7 +393,6 @@ body {
 	
 	border-width:4px;
 	border-style:solid;
-	#border-right-style:none;
 }
 
 [class$="-WLWR"] {
@@ -399,7 +400,6 @@ body {
 	
 	border-width:4px;
 	border-style:solid;
-	#border-right-style:none;
 }
 
 
@@ -459,8 +459,60 @@ body {
 }
 .stock-table-status {
 	display:table;
-	width:20em;
+	width:18em;
 }
+.sell-stock-table-status {
+	display:table;
+	width:42em;
+}
+[class^="stock-sell-status-row"]{
+	display:table-row;
+}
+[class^="stock-sell-status-cell"] {
+	display:table-cell;	
+}
+
+.stock-sell-status-row-stock-header{
+	font-size:75%;
+}
+
+.frameContent-notice {
+	font-size:50%;
+}
+
+[class^="button-inner-stock-sell"] {
+	border-radius:10px;
+	background:darkgreen;
+	text-align:center;
+	margin:5px;
+	/*height:75%;*/
+	/*line-height:175%;*/
+	margin-left:0.25em;
+	margin-right:0.25em;
+	border-style:ridge;
+	color:white;
+}
+[class^="button-stock-sell"] {
+	font-size:100%;
+	border-radius:10px;
+	background:linear-gradient(rgb(118 131 92), #e2d38b,rgb(88 102 59) );
+	padding:0px;
+	/*height:3em;*/
+	min-width:4em;
+	display:"";
+	border-style:outset;
+	padding-right:2px;
+	padding-bottom:2px;
+}
+
+[class^="button-inner-stock-sell-select-enabled"] {
+	background: darkgreen;
+}
+[class^="button-inner-stock-sell-select-disabled"] {
+	background: darkred;
+}
+
+
 
 .player-status-row {
 	border-radius:5px;

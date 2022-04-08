@@ -18,11 +18,17 @@ class GameState extends Events {
 	events = new Events();
 }
 
-export function sendSelling( n) {
+export function sendSale( invoice ) {
+	send( {op:"sale", invoice })
+}
+
+export function sendSelling() {
+	// hold rolling?
 	send( {op:"selling" } );
 }
-export function sendColor(n) {
-	send( {op:"color", color:n } );
+
+export function sendColor(color) {
+	send( {op:"color", color } );
 }
 
 export function sendQuit() {
