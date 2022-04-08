@@ -17,9 +17,33 @@ export class SellForm extends Popup {
 	cash = 0;
 	target = 0; // required to sell this much.
 	stock = null;
-        
-	constructor( parent ) {
+
+	tableSet = document.createElement( "div" );
+	table = document.createElement( "div" );
+	stocks = null;
+
+	rows = []; // holders for the stock selector table?
+	curRow = null;
+	saleConfirmNotice= null;
+	constructor( parent, stocks ) {
         	super( "Sell Stocks", parent, {suffix:"-sell"} );
+
+			this.stocks = stocks;
+
+			this.table.className = "sell-stock-table-status";
+			//this.table.style.display ="inline-block";
+			//this.table2.className = "stock-table-status";
+			this.tableSet.className = "sell-stock-table-set";
+			//this.table2.style.display ="inline-block";
+
+			this.addRow( null, this.table ); // create header row.
+			for( let stock of protocol.gameState.thisPlayer.stocks ) { this.addRow( stock, this.table ); }
+
+			//this.hide();
+			this.tableSet.appendChild( this.table );
+			//this.tableSet.appendChild( this.table2 );
+			this.appendChild( this.tableSet );
+	
 
 		let row,label;
                 
@@ -27,7 +51,7 @@ export class SellForm extends Popup {
                 row.className = 'stock-sell-row-stock';
                 label = document.createElement( "span" );
                 label.className = 'stock-sell-label-stock';
-                label.textContent = "Buy";
+                label.textContent = "Selling:";
                 row.appendChild( label );
                 row.appendChild( this.stockName );
 		this.stockName.textContent = "Stock Name Goes Here";
@@ -38,7 +62,7 @@ export class SellForm extends Popup {
                 row.className = 'stock-sell-row-cost';
                 label = document.createElement( "span" );
                 label.className = 'stock-sell-label-cost';
-                label.textContent = "For";
+                label.textContent = "For:";
                 row.appendChild( label );
                 row.appendChild( this.sellsFor );
                 this.sellsFor.className = 'stock-sell-value-cost';
@@ -63,7 +87,7 @@ export class SellForm extends Popup {
 
                 label = document.createElement( "span" );
                 label.className = 'stock-sell-label-spend';
-                label.textContent = "Total Cost:";
+                label.textContent = "Total Value:";
                 row.appendChild( label );
                 row.appendChild( this.cost );
                 this.cost.className = 'stock-sell-value-spend';
@@ -89,7 +113,7 @@ export class SellForm extends Popup {
 	        this.shareMode = popups.makeButton( row, "Buy Shares", ()=>this.setShares( ) ) 
 		this.shareMode.className = "stock-sell-button-enable-shares";
 		this.shareMode.buttonInner.className = "stock-sell-inner-button-enable-share";
-	        this.cashMode = popups.makeButton( row, "Use Cash", ()=>this.setCash( ) ) 
+        this.cashMode = popups.makeButton( row, "Use Cash", ()=>this.setCash( ) ) 
 		this.cashMode.className = "stock-sell-button-disable-cash";
 		this.cashMode.buttonInner.className = "stock-sell-inner-button-disable-cash";
                 row.appendChild( document.createElement( "br" ) );
@@ -125,7 +149,7 @@ export class SellForm extends Popup {
 		cancel.buttonInner.className = "stock-sell-inner-button-cancel";
 		cancel.buttonInner.style.width = "";
 		cancel.style.width = '';
-	        const buy = popups.makeButton( row, "Buy", ()=>this.buy( ) ) 
+	        const buy = popups.makeButton( row, "Sell", ()=>this.makeSale( ) ) 
 		buy.className = "stock-sell-button-accept";
 		buy.buttonInner.className = "stock-sell-inner-button-accept";
 		buy.buttonInner.style.width = "";
@@ -143,25 +167,52 @@ export class SellForm extends Popup {
         }
 
 	show( player, stock, forced ) {
+
 		this.stock = stock;
 		this.target = forced;
 
 		console.log( "Is player and stock enough?", player, stock );
-		for( let pstock of player.stocks ) {
-			if( pstock.id === stock.id ) {
-				this.owned.textContent = pstock.shares;
-				this.stockName.textContent = stock.name;
-				this.sellsFor.textContent = stock.value;
-				break;
+		if( stock ) {
+			for( let pstock of player.stocks ) {
+				if( pstock.id === stock.id ) {
+					this.owned.textContent = pstock.shares;
+					this.stockName.textContent = stock.name;
+					this.sellsFor.textContent = stock.value;
+					break;
+				}
 			}
+		}else {
+			for( let row of this.rows ) {
+				row.wantShares = 0;
+				row.refresh();
+			}			
+			this.cost.textContent = popups.utils.to$(0);
+			// all stocks.
 		}
+		for( let row of this.rows ) row.refresh();
 		super.show();
-		this.center();
+		if( !stock ) {
+			protocol.sendSelling();
+			this.center();
+		}
 
 	}
 
-	buy() {
-		protocol.sendBuy( this.stock, this.shareCount );
+	makeSale() {
+		const sale = this.rows.map( (row)=>({
+			shares:row.wantShares, stock:row.stock.id
+		})).filter( item=>item.shares );
+		let msg = "Are you sure you want to Sell:<br>";
+		sale.forEach( item=>msg = msg+"Shares:"+item.shares+ " of:" + "getStockName" + "<BR>")
+		if( !this.saleConfirmNotice ) 
+			this.saleConfirmNotice = popups.simpleNotice( "Confirm", null, ()=>{
+				protocol.sendSale( sale );
+			}, ()=>{
+				
+			});
+		this.saleConfirmNotice.textOutput.innerHTML = msg;
+		this.saleConfirmNotice.show();
+		this.saleConfirmNotice.center();
 	}
 
 	set cash( val ) {
@@ -179,13 +230,162 @@ export class SellForm extends Popup {
 	}
 	setShares() {
 	}
+
+	setShareCount( n ) {
+		if( this.curRow ) {
+			this.shares.value = this.shareCount;
+			this.curRow.wantShares = this.shareCount;
+
+			let tot = 0;
+			for( let row of this.rows ) {
+				if( row.wantShares ) {
+					tot += row.wantShares * row.stock.value;
+				}
+			}
+
+			//const cost = this.shareCount * this.stock.value;
+			this.cost.textContent = popups.utils.to$(tot*100);
+
+			this.curRow.refresh();
+		}
+		else {
+
+			this.cost.textContent = "Select stock to sell."
+
+		}
+	}
 	press( n ) {
 		console.log( "Want to add N shares(dollars?", n );
-		this.shareCount += n;
-		if( this.shareCount < 0 ) this.shareCount = 0;
+		if( this.stock ) {
+			this.shareCount += n;
+			if( this.shareCount < 0 ) this.shareCount = 0;
+	
+			this.setShareCount( this.shareCount );
 
-		this.shares.value = this.shareCount;
-		const cost = this.shareCount * this.stock.value;
-		this.cost.textContent = cost;
+		} else {
+			this.cost.textContent = "Select stock to sell."
+		}
 	}
+
+	addRow( userStock, table ) {
+		const stock = userStock && this.stocks.find( stock=>stock.id===userStock.id );
+		const row = {
+			row : document.createElement( "div" ),
+			label : document.createElement( "span" ),
+			price : document.createElement( "span" ),
+			value : document.createElement( "span" ),
+			shares : document.createElement( "span" ),
+			sellValue : document.createElement( "span" ),
+			sellShares : document.createElement( "span" ),
+			button : null,
+			wantShares : 0,
+			stock,
+			userStock,
+			selected : false,
+			refresh() {
+				row.value.textContent = '$'+row.stock.value;
+				row.shares.textContent = row.userStock.shares;
+				row.sellShares.textContent = row.wantShares;
+				row.sellValue.textContent = row.wantShares * row.stock.value;
+				if( row.userStock.shares ) row.row.style.display = "";
+				else row.row.style.display = "none";
+			}
+		};
+
+		if( !userStock ) {
+
+			//row = document.createElement( "div" );
+			row.row.className = 'stock-sell-status-row-stock-'+(stock?stock.symbol:"header");
+
+			row.label.className = 'stock-sell-status-cell-label-' +( stock?stock.symbol:"header");
+			row.label.textContent = "Stock Name";
+
+			row.value.className = 'stock-sell-status-cell-value-' + (stock?stock.symbol:"header");
+			row.value.textContent = "Sells For";
+
+			row.shares.className = 'stock-sell-status-cell-shares-' +( stock?stock.symbol:"header");
+			row.shares.textContent = "You Have";
+
+			row.sellValue.className = 'stock-sell-status-cell-sell-value-' + (stock?stock.symbol:"header");
+			row.sellValue.textContent = "Total";
+
+			row.sellShares.className = 'stock-sell-status-cell-sell-shares-' +( stock?stock.symbol:"header");
+			row.sellShares.textContent = "selling";
+
+			row.price.className = 'stock-sell-status-cell-price-' + (stock?stock.symbol:"header");
+			row.price.textContent = "$??";
+			row.row.appendChild( document.createElement('div'));
+			row.row.appendChild( row.label );
+			//row.row.appendChild( row.price );
+			row.row.appendChild( row.shares );
+			row.row.appendChild( row.value );
+	
+			row.row.appendChild( row.sellShares );
+			row.row.appendChild( row.sellValue );
+	
+			table.appendChild( row.row );
+	
+			return;
+		}
+
+		//row = document.createElement( "div" );
+		row.row.className = 'stock-sell-status-row-stock-'+stock.symbol;
+
+		row.label.className = 'stock-sell-status-cell-label-' + stock.symbol;
+		row.label.textContent = stock.name;
+
+		row.value.className = 'stock-sell-status-cell-value-' + stock.symbol;
+		row.value.textContent = stock.symbol;
+
+		row.shares.className = 'stock-sell-status-cell-shares-' + stock.symbol;
+		row.shares.textContent = 0;
+
+		row.sellValue.className = 'stock-sell-status-cell-sell-value-' + stock.symbol;
+		row.sellValue.textContent = stock.symbol;
+
+		row.sellShares.className = 'stock-sell-status-cell-sell-shares-' + stock.symbol;
+		row.sellShares.textContent = 0;
+
+		row.price.className = 'stock-sell-status-cell-price-' + stock.symbol;
+		row.price.textContent = "$??";
+
+		const button = row.button = popups.makeButton( row.row, "Select",()=>{
+			row.selected = !row.selected;
+			if( row.selected ) {
+				for( let oldrow of this.rows ) { if( oldrow != row && oldrow.selected ){
+					oldrow.selected = false;
+					oldrow.button.buttonInner.className = "button-inner-stock-sell-select-disabled";
+				} }
+				row.button.buttonInner.className = "button-inner-stock-sell-select-enabled";
+				this.curRow = row;
+				this.shareCount = row.wantShares;
+				this.shares.value = this.shareCount;
+
+				this.show( protocol.gameState.thisPlayer, row.stock, false );
+
+
+
+			} else {
+				row.button.buttonInner.className = "button-inner-stock-sell-select-disabled";
+			}
+		});
+		button.className = "button-stock-sell-select";
+		button.buttonInner.className = "button-inner-stock-sell-select-disabled";
+		button.buttonInner.style.width = "";
+		button.style.width = '';
+		
+
+		row.row.appendChild( row.label );
+		//row.row.appendChild( row.price );
+		row.row.appendChild( row.shares );
+		row.row.appendChild( row.value );
+
+		row.row.appendChild( row.sellShares );
+		row.row.appendChild( row.sellValue );
+
+		table.appendChild( row.row );
+		this.rows.push( row );
+	
+	}
+
 }

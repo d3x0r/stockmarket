@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
     , "link": "npm link sack.vfs @d3x0r/popups jsox"
-    , "start":"node --inspect-brk --experimental-loader=sack.vfs/import.mjs  server/server.mjs"
+    , "start":"node  --experimental-loader=sack.vfs/import.mjs  server/server.mjs"
     , "start2":"cd ui && node --inspect-brk --experimental-loader=sack.vfs/import.mjs  ../server/server.mjs"
   },
   "dependencies":{

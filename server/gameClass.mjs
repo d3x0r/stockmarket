@@ -61,7 +61,7 @@ export class Game {
 		for( let user of this.users ) {
 			user.queue.push( msg );
 		}
-		
+
 	}
 	buy( user, userStock ) {
 		const msg=`{op:stock,user:"${JSOX.escape(user.name)}",stock:${JSOX.stringify( userStock )} }`;
@@ -106,8 +106,10 @@ export class Game {
 					if( thisPlayer.rolled )
 						go = true;
 				} else {
-					if( !thisPlayer.rolled ) {
+					if( thisPlayer.rolled ) {
 						thisPlayer.charge( board.startFee );
+						console.log( "Charging player fee:", board.startFee, thisPlayer );
+						console.log( "If they still have money? Go!", thisPlayer.cash );
 						if( thisPlayer.cash > 0 ) 
 							go = true;
 					}
@@ -276,9 +278,9 @@ export class Game {
 		let choices = [{stock:space.stock?.id||0,space:space,dir:left, split:space.split }];
 		{
 			let n = 0;
-			console.log( "--------- Getting moves", space, left );
+			//console.log( "--------- Getting moves", space, left );
 			while( number-- ) {
-				console.log( "Path has %d choices", choices.length, choices.map( c=>({space:c.space,dir:c.dir}) ) );
+				//console.log( "Path has %d choices", choices.length, choices.map( c=>({space:c.space,dir:c.dir}) ) );
 				const curlen = choices.length;
 				for( let c =0; c < curlen; c++ ) {
 					const was = choices[c].space;
@@ -289,8 +291,8 @@ export class Game {
 					if( !choices[c].split && was.meeting ) { // don't go back into a meeting
 						const userStock = user.stocks.find( stock=>stock.id===was.stock.id );
 						if( userStock?.shares ) {
-							console.log( "came from a board space that has a meting... add fork:", was.meeting, was.meetingDirection );
-							choices.push( {stock:was.stock.id, space:was.meeting, dir:was.meetingDirection, split:true} );
+							//console.log( "came from a board space that has a meting... add fork:", was.meeting, was.meetingDirection );
+							choices.push( {stock:was.stock.id, space:was.meeting, dir:was.meetingDirection, split:was.meeting.split} );
 						}
 					}
 					choices[c].split = was.split;

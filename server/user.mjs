@@ -204,20 +204,43 @@ export class User {
 	}	
 
 	sell( msg ) {
-		const stockId = msg.stock;
-		const shares = msg.shares;
-		const stock = this.stocks.find( (stock)=>{
-			
-			if( stock.id === stockId ) {
-				//const value = 
-				const value = stock.value;
-				stock.shares -= shares;
-				this.cash += shares*value;
-				return true;
-			}
-			return false;
-		} );
-		this.game.sell( this, stock );
+		console.log( "THIS IS BROKEN COPY OF BUY" );
+		for( let stock of msg.invoice ) {
+			const stockId = stock.stock;
+			const shares = stock.shares;
+			const stock = this.stocks.find( (stock)=>{
+				
+				if( stock.id === stockId ) {
+					//const value = 
+					const value = stock.value;
+					stock.shares += shares;
+					this.cash -= shares*value;
+					return true;
+				}
+				return false;
+			} );
+			this.game.sell( this, stock );
+		}
+	}
+
+	sale( msg ) {
+		for( let stock of msg.invoice ) {
+			const stockId = stock.stock;
+			const shares = stock.shares;
+			const playerstock = this.stocks.find( (stock)=>{
+				
+				if( stock.id === stockId ) {
+					//const value = 
+					const value = stock.value;
+					stock.shares += shares;
+					this.cash -= shares*value;
+					return true;
+				}
+				return false;
+			} );
+			if( playerstock )
+				this.game.sell( this, playerstock );
+		}
 	}
 
 	sendMoney( val ) {

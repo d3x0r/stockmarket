@@ -10,7 +10,7 @@ export class PlayerStatusForm extends Popup {
 	playerRows = []; // player status rows.
 	tableSet = document.createElement( "div" );
 	table = document.createElement( "div" );
-	table2 = document.createElement( "div" );
+	//table2 = document.createElement( "div" );
 	
 	playerStatus = null;
 
@@ -63,22 +63,20 @@ export class PlayerStatusForm extends Popup {
 		playerFrame.appendChild(this.otherPlayersFrame);
 		this.table.className = "stock-table-status";
 		//this.table.style.display ="inline-block";
-		this.table2.className = "stock-table-status";
+		//this.table2.className = "stock-table-status";
 		this.tableSet.className = "stock-table-set";
 		//this.table2.style.display ="inline-block";
 
-		for( let stock of player.stocks ) { if( this.rows.length >= 4 ) this.addRow( stock, this.table2 ); else this.addRow( stock, this.table ); }
+		for( let stock of player.stocks ) { this.addRow( stock, this.table ); }
 		//this.hide();
 		this.tableSet.appendChild( this.table );
-		this.tableSet.appendChild( this.table2 );
+		//this.tableSet.appendChild( this.table2 );
 		this.appendChild( this.tableSet );
 
 
 		// position roughly...
 		this.divFrame.style.left="92vh";
 		this.divFrame.style.top="5vh";
-
-
 
 		protocol.on( "buying", (msg)=>{
 			const playerRow = this.playerRows.find( row=>row.player.name===msg.name );
@@ -191,6 +189,7 @@ export class PlayerStatusForm extends Popup {
 			label : document.createElement( "span" ),
 			price : document.createElement( "span" ),
 			value : document.createElement( "span" ),
+			shares : document.createElement( "span" ),
 			stock,
 			userStock,
 		};
@@ -201,16 +200,20 @@ export class PlayerStatusForm extends Popup {
 
 
 		row.label.className = 'player-stock-status-cell-label-' + stock.symbol;
-		row.label.textContent = stock.name;
+		row.label.textContent = stock.symbol;
 
 		row.value.className = 'player-stock-status-cell-value-' + stock.symbol;
 		row.value.textContent = stock.symbol;
+
+		row.shares.className = 'player-stock-status-cell-shares-' + stock.symbol;
+		row.shares.textContent = 0;
 
 		row.price.className = 'player-stock-status-cell-price-' + stock.symbol;
 		row.price.textContent = "$??";
 
 		row.row.appendChild( row.label );
 		row.row.appendChild( row.price );
+		row.row.appendChild( row.shares );
 		row.row.appendChild( row.value );
 
 		table.appendChild( row.row );
@@ -240,6 +243,7 @@ export class PlayerStatusForm extends Popup {
 		this.playerValue.refresh();
 		this.playerCash.refresh();
 		for( let row of this.rows ) {
+			row.shares.textContent = row.userStock.shares;
 			row.price.textContent = '$' + row.stock.value;
 			row.value.textContent = '$' + (row.stock.value * row.userStock.shares );
 		}	

@@ -147,15 +147,30 @@ function getHandler( ws, shared ) {
 			user.buy( msg );
 			break;
 		case "sell":
-			console.log( "User sold something; sending next turn", msg );
+			console.log( "User sold something; unlocking selling mode?", msg );
 			user.sell( msg );
+			break;
+		case "sale":
+			console.log( "User sold something; unlocking selling mode?", msg );
+			user.sale( msg );
+			break;
+		case "seliing":
+			user.selling = true;
+			const msgout = JSOX.stringify( {op:"selling", user:user.name }) ;
+			for( let peer of user.game.users ) {
+				if( peer != user )
+					peer.ws.send( msgout );
+			}
 			break;
 		case "no-sale":
 			console.log( "User did not buy; sending next turn" );			
 			if( user.buying || user.selling ) {
+				if( user.buying )
+					if( user.rolled )
+						user.game.nextTurn();
+
 				user.buying = user.selling = false;
-				if( user.rolled )
-					user.game.nextTurn();
+				
 				user.game.flush();
 			}
 			break;

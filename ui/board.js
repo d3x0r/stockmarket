@@ -61,7 +61,6 @@ export class GameBoard extends Popup {
 	stockForm = null;
 	playerStatus = null; // form;
 	buyForm = new BuyForm( this );
-	sellForm = new SellForm( this );
 	debtForm = new DebtForm( this );
 
 	get allowPlay() { return this.#allowPlay }
@@ -256,7 +255,8 @@ export class GameBoard extends Popup {
 		this.gameBoardOverlay.addEventListener( "mouseup", (evt)=>this.mouseup(event) );
 		this.gameBoardOverlay.addEventListener( "mousedown", (evt)=>this.mousedown(event) );
 
-	        this.stockForm = new StockForm( this, this.board.stocks );
+		this.sellForm = new SellForm( this, this.board.stocks );
+        this.stockForm = new StockForm( this, this.board.stocks );
 		this.playerStatus = new PlayerStatusForm( this, this.thisPlayer, this.board.stocks );
 
 
@@ -574,7 +574,6 @@ export class Board {
 	}
 
 	handleSellStocks( space ) {
-		protocol.sendSelling();
 		this.#gameBoard.sellForm.show( this.#gameBoard.thisPlayer, space.stock );
 	}
 	handleQuit( space ) {
