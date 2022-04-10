@@ -16,9 +16,10 @@ export class SellForm extends Popup {
 	cashMode = null;
 
 	shareCount = 0;
-	cash = 0;
+	payback = 0;
 	target = 0; // required to sell this much.
 	stock = null;
+	player = null;
 
 	tableSet = document.createElement( "div" );
 	table = document.createElement( "div" );
@@ -31,21 +32,21 @@ export class SellForm extends Popup {
 	constructor( parent, stocks ) {
         	super( "Sell Stocks", parent, {suffix:"-sell"} );
 
-			this.stocks = stocks;
+		this.stocks = stocks;
 
-			this.table.className = "sell-stock-table-status";
-			//this.table.style.display ="inline-block";
-			//this.table2.className = "stock-table-status";
-			this.tableSet.className = "sell-stock-table-set";
-			//this.table2.style.display ="inline-block";
+		this.table.className = "sell-stock-table-status";
+		//this.table.style.display ="inline-block";
+		//this.table2.className = "stock-table-status";
+		this.tableSet.className = "sell-stock-table-set";
+		//this.table2.style.display ="inline-block";
 
-			this.addRow( null, this.table ); // create header row.
-			for( let stock of protocol.gameState.thisPlayer.stocks ) { this.addRow( stock, this.table ); }
+		this.addRow( null, this.table ); // create header row.
+		for( let stock of protocol.gameState.thisPlayer.stocks ) { this.addRow( stock, this.table ); }
 
-			//this.hide();
-			this.tableSet.appendChild( this.table );
-			//this.tableSet.appendChild( this.table2 );
-			this.appendChild( this.tableSet );
+		//this.hide();
+		this.tableSet.appendChild( this.table );
+		//this.tableSet.appendChild( this.table2 );
+		this.appendChild( this.tableSet );
 	
 
 		let row,label;
@@ -176,6 +177,12 @@ export class SellForm extends Popup {
                 this.appendChild( row )
 
 		this.on("cancel",()=>{
+			if( this.target ) {
+				if( this.payback < this.target ) {
+					popups.Alert( "Must sell more to reach target" );
+					return;
+				}
+			}
 			this.hide();
 			protocol.sendNoSale();
 		} );
@@ -187,14 +194,44 @@ export class SellForm extends Popup {
 		this.hide();
         }
 
-	show( player, stock, forced ) {
+	update( stock ) {
+		this.stock = stock;
+		
+		for( let pstock of this.player.stocks ) {
+			if( pstock.id === stock.id ) {
+				this.owned.textContent = pstock.shares;
+				this.stockName.textContent = stock.name;
+				this.sellsFor.textContent = popups.utils.to$((this.target?stock.minValue:stock.value)*100);
+				break;
+			}
+		}
+		this.forcedSaleAmount.textContent = popups.utils.to$( this.target*100 ) + " to go: " + popups.utils.to$( ( this.payback - this.target ) *100 );
 
+		for( let row of this.rows ) row.refresh();
+	}
+
+	show( player, stock, forced ) {
+		this.player = player;
 		this.stock = stock;
 		
 		this.target = forced;
 		if( forced && !stock ) {
 			this.forcedSale.style.display = "";
-			this.forcedSaleAmount.textContent = popups.utils.to$( this.target*100 );
+			this.forcedSaleAmount.textContent = popups.utils.to$( this.target*100 ) + " to go: " + popups.utils.to$( ((this.target > this.payback )? this.target - this.payback:0 ) *100 );
+
+			let canSell = 0;
+			for( let row of this.rows ) {
+				canSell += row.userStock.shares * row.stock.minValue;
+			}			
+			if( canSell < forced ) {
+				const notice = popups.simpleNotice( "Bankrupt!", "You do not have enough shares to sell to cover the debt.  Restarting", ()=>{
+					protocol.sendBankrupt();
+					console.log( "Bankrupt" );
+					notice.remove();
+					this.hide();
+				} );
+				notice.show();
+			}
 		} else {
 			if( !stock && !forced ) {
 				this.forcedSale.style.display = "none";
@@ -234,6 +271,14 @@ export class SellForm extends Popup {
 	}
 
 	makeSale() {
+		if( this.target ) {
+			if( this.payback < this.target ) {
+				popups.Alert( "Must sell more to reach target" );
+				return;
+			}
+		}
+
+
 		const  getStockName = (id)=> {
 			const stock = this.stocks.find( stock=>stock.id===id);
 			return stock.name;
@@ -256,10 +301,6 @@ export class SellForm extends Popup {
 		this.saleConfirmNotice.textOutput.innerHTML = msg;
 		this.saleConfirmNotice.show();
 		this.saleConfirmNotice.center();
-	}
-
-	set cash( val ) {
-		this.cash = val;
 	}
 
 	set stock( val ) {
@@ -288,9 +329,11 @@ export class SellForm extends Popup {
 					tot += row.wantShares * (this.target?row.stock.minValue:row.stock.value);
 				}
 			}
-
+			this.payback = tot;
 			//const cost = this.shareCount * this.stock.value;
 			this.cost.textContent = popups.utils.to$(tot*100);
+			if( this.target )
+				this.forcedSaleAmount.textContent = popups.utils.to$( this.target*100 ) + " to go: " + popups.utils.to$( ( this.payback - this.target ) *100 );
 
 			this.curRow.refresh();
 		}
@@ -414,7 +457,7 @@ export class SellForm extends Popup {
 				this.shareCount = row.wantShares;
 				this.shares.value = this.shareCount;
 
-				this.show( protocol.gameState.thisPlayer, row.stock, form.target );
+				this.update( row.stock );
 
 
 

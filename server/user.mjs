@@ -230,6 +230,7 @@ export class User {
 	sale( msg ) {
 		let totCash= 0;
 		let min = !!msg.target;
+		
 		for( let stock of msg.invoice ) {
 			const stockId = stock.stock;
 			const shares = stock.shares;
@@ -248,6 +249,10 @@ export class User {
 				this.game.sell( this, playerstock );
 		}
 		this.pay( totCash );
+
+		if( min && this.cash >= 0 )
+			this.game.nextTurn();
+
 		this.game.flush();
 
 	}

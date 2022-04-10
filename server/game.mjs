@@ -190,10 +190,20 @@ function getHandler( ws, shared ) {
 					peer.ws.send( msgout );
 			}
 			break;
+		case "bankrupt":
+			user.reset();
+			user.inPlay = user.game.inPlay;
+			const newMsg = JSOX.stringify( {op:"quit", user:user.name } ) + JSOX.stringify( {op:"player", player:user } )
+			user.game.nextTurn();
+			for( let peer of user.game.users ) {
+				peer.queue.push( newmsg );
+			}
+			user.game.flush();
+			break;
 		case "no-sale":
 			console.log( "User did not buy; sending next turn" );			
 			if( user.buying || user.selling ) {
-				if( user.buying )
+				if( user.buying || user.selling )
 					if( user.rolled )
 						user.game.nextTurn();
 

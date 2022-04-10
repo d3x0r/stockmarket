@@ -18,6 +18,11 @@ class GameState extends Events {
 	events = new Events();
 }
 
+export function sendBankrupt() {
+	// hold rolling?
+	send( {op:"bankrupt" } );
+}
+
 export function sendSale( target, invoice ) {
 	send( {op:"sale", target, invoice })
 }
