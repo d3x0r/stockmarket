@@ -65,7 +65,10 @@ function getHandler( ws, shared ) {
 	
 	let user = null;
 	joinLobby = joinLobby_
-	return parser.write.bind( parser );
+
+	const binding = parser.write.bind( parser );
+	binding.close = doClose;
+	return binding;
 
         
         function dispatchMessage(msg) {
@@ -94,11 +97,11 @@ function getHandler( ws, shared ) {
 						// they get a whole user state to add to their game...
 						const gameJoin = JSOX.stringify( { op:"player", user:user } );
 						// before adding this user, tell all old users about this new user.
-						for( let user of game.users ) {
-							user.ws.send( gameJoin );
+						for( let gameuser of user.game.users ) {
+							gameuser.ws.send( gameJoin );
 						}
 
-						user.game.push( found );
+						user.game.users.push( user );
 
 					}
 					// tell the player joining about the game.
@@ -108,7 +111,8 @@ function getHandler( ws, shared ) {
 					break;
 				} else {
 				}
-			}else {
+			} else {
+				// for some reason this makes me do a null for my name...
 				user = new User( msg.name );
 				users.set( msg.name, user );
 				user.ws = ws;
@@ -214,7 +218,7 @@ function getHandler( ws, shared ) {
 				}
 				lobby.games.push( game );
 
-				JSOX.stringify( {op:"game", game:msg.name } )
+				const newMsg = JSOX.stringify( {op:"part", user:user.name } ) + JSOX.stringify( {op:"game", game:msg.name } )
 				lobby.users.forEach( user=>{
 					// tell everyone else in the lobby about the new game.
 					user.ws.send( newMsg );
@@ -230,8 +234,12 @@ function getHandler( ws, shared ) {
 	}catch(err){ console.log( "MessageError:", err);        }
         }
 
-	dispatchMessage.close = function() {
-		const user_ = user.name;
+	function doClose( code,reason ) {
+		if( !user ) {
+			console.log( "Wow, closed before even a login, rude..." );
+			return;
+		}
+		const user_ = user?.name;
 		//users.get( msg.name )
 		if( user.game ) {
 			const partGame = JSOX.stringify( {op:"quit", user:user_ } );
@@ -247,7 +255,8 @@ function getHandler( ws, shared ) {
 				}
 			}
 		}else{
-			const uid = lobby.users.findIndex( u=>u===user_ );
+			const uid = lobby.users.findIndex( u=>u.name===user_ );
+		console.log( "closed user was in lobby?", uid );
 			if( uid >= 0 ) {                                                	
 				lobby.users.splice( uid, 1 );
 				// tell everyone in the lobby this guy left.
@@ -274,7 +283,7 @@ function getHandler( ws, shared ) {
 
 		// tell the lobby this player is leaving
 		if( !user.game ) {
-			const newMsg= JSOX.stringify( {op:"part", user:user } );  
+			const newMsg= JSOX.stringify( {op:"part", user:user.name } );  
 			lobby.users.forEach( user=>{
 				user.ws.send( newMsg );
 			} );

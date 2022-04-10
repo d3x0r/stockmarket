@@ -43,7 +43,7 @@ export function go() {
 	protocol.on( "lobby", (msg)=>{
 		//console.log( "lobby handler?", msg );
 		if( !lobby )
-			lobby = new Lobby( form, msg, login?.username || user );
+			lobby = new Lobby( form, msg, protocol.gameState.username );
 		else
 			lobby.reload( msg );
 	});

@@ -43,7 +43,8 @@ export class GameWait extends Popup {
 
 		protocol.on( "player", (msg)=>this.addPlayer( msg.user ) );		
 		protocol.on( "ready", (msg)=>this.readyPlayer( msg.user ) );                
-		protocol.on( "unready", (msg)=>this.unreadyPlayer( msg.user ) );                
+		protocol.on( "unready", (msg)=>this.unreadyPlayer( msg.user ) );
+		protocol.on( "quit", (msg)=>this.removePlayer( msg.user ) );
 		protocol.on( "go", (msg)=>this.readyPlayer( msg.user ) );                
 
                 this.readyButton = popups.makeButton( this, "Ready", ()=>{
@@ -153,6 +154,17 @@ export class GameWait extends Popup {
         dropPlayer(player) {
 		const playerId = this.#rows.findIndex( p=>p === player ) ;
 		if( playerId >= 0 ){
+			const oldrow = this.#rows[playerId];
+			oldrow.row.remove();
+			this.#rows.splice( playerId, 1 );
+		}
+        }
+
+        removePlayer(player) {
+		const playerId = this.#rows.findIndex( r=>r.player.name === player ) ;
+		if( playerId >= 0 ){
+			const oldrow = this.#rows[playerId];
+			oldrow.row.remove();
 			this.#rows.splice( playerId, 1 );
 		}
         }
