@@ -182,7 +182,7 @@ function getHandler( ws, shared ) {
 			console.log( "User sold something; unlocking selling mode?", msg );
 			user.sale( msg );
 			break;
-		case "seliing":
+		case "selling":
 			user.selling = true;
 			const msgout = JSOX.stringify( {op:"selling", user:user.name }) ;
 			for( let peer of user.game.users ) {

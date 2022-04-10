@@ -17,7 +17,7 @@ export class Game {
 	name = '';
 
 	bank = 1500000; // 1.5m total cash?(config!)
-	marketLine = 0;
+	marketLine = stocks.stages;
 	inPlay = false;
 
 	#stocks = stocks.stocks.map( stock=>(new Stock(this,stock)) )
@@ -64,11 +64,11 @@ export class Game {
 
 	}
 	buy( user, userStock ) {
-		const msg=`{op:stock,user:"${JSOX.escape(user.name)}",stock:${JSOX.stringify( userStock )} }`;
+		//const msg=`{op:stock,user:"${JSOX.escape(user.name)}",stock:${JSOX.stringify( userStock )} }`;
 		// update everyone's idea of this user's stocks (including 'this' user)
-		for( let user of this.users ) {
-			user.queue.push( msg );
-		}
+		//for( let user of this.users ) {
+		//	user.queue.push( msg );
+		//}
 		
 		this.nextTurn();	
 		this.flush();
@@ -160,9 +160,13 @@ export class Game {
 					if( space.stock.id === stock.id ) {
 						const div = stock.dividend * stock.shares;
 						thisPlayer.buying = true;
-						thisPlayer.pay( div );
-						break;
+						if( !stocks.everyPlayerDividend ) {
+							thisPlayer.pay( div );
+							break;
+						}
 					}
+					if( stocks.everyPlayerDividend )
+						thisPlayer.pay( div );
 				}				
 			}
 
@@ -275,7 +279,8 @@ export class Game {
 
 	getMoves( user, space, number, left ) {
 		// gets what moves a player can do, and tells that player.
-		let choices = [{stock:space.stock?.id||0,space:space,dir:left, split:space.split }];
+		console.log( "user getting moves:", user );
+		let choices = [{stock:user.meeting?user.meeting:space.stock?.id||0,space:space,dir:left, split:space.split }];
 		{
 			let n = 0;
 			//console.log( "--------- Getting moves", space, left );

@@ -9,7 +9,11 @@ export class StockForm extends Popup {
 	table2 = document.createElement( "div" );
 
 	constructor( parent, stocks ) {
-        	super( null, parent, {suffix:"-stock", noCaption:true} );
+        	super( null, parent, {suffix:"-stock", noCaption:true, id:"Stock Status Form"} );
+		if( !this.divFrame.style.left ) {
+			this.divFrame.style.left="18.75%";
+			this.divFrame.style.top="65%";
+		}
 
 		this.table.className = "stock-table";
 		this.table.style.display ="inline-block";
@@ -20,10 +24,8 @@ export class StockForm extends Popup {
 		this.appendChild( this.table );
 		this.appendChild( this.table2 );
 
-		this.divFrame.style.left="18.75%";
-		this.divFrame.style.top="65%";
 		protocol.on( "market", (msg)=>this.refresh() );
-
+		this.refresh();
         }
 
 	addRow( stock, table ) {

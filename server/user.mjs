@@ -141,6 +141,7 @@ export class User {
 				break;
 			}
 		}
+		console.log( "Message to give?", msg, this.game.users );
 		if( msg ) for( let peer of this.game.users ) peer.queue.push(msg);
 	}
 
@@ -196,10 +197,11 @@ export class User {
 				const value = stock.value;
 				console.log( "Verify that player has cash?", this.cash, value );
 				this.cash -= shares*value;
-				stock.shares += shares;
+				this.give( stockId, shares );
 				return true;
 			}
 		} );
+		// ends up issuing nextTurn message...
 		this.game.buy( this, stock );
 	}	
 
@@ -224,6 +226,7 @@ export class User {
 	}
 
 	sale( msg ) {
+		let totCash= 0;
 		for( let stock of msg.invoice ) {
 			const stockId = stock.stock;
 			const shares = stock.shares;
@@ -232,8 +235,8 @@ export class User {
 				if( stock.id === stockId ) {
 					//const value = 
 					const value = stock.value;
-					stock.shares += shares;
-					this.cash -= shares*value;
+					stock.shares -= shares;
+					totCash += shares*value;
 					return true;
 				}
 				return false;
@@ -241,6 +244,9 @@ export class User {
 			if( playerstock )
 				this.game.sell( this, playerstock );
 		}
+		this.pay( totCash );
+		this.game.flush();
+
 	}
 
 	sendMoney( val ) {

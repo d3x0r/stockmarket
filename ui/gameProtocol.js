@@ -132,6 +132,20 @@ function setPlayerColor( player, color ) {
 
 
 function parseMessage( ws, msg ) {
+	/* 
+	// auto replace user in message with a known user...
+	// some messages will not have a user name.
+	if( "user" in msg ) {
+		if( "string" typeof msg.user )
+			for( let player of gameState.game.users ) {
+				if( player.name === msg.user ) {
+					msg.user = player;
+					break;
+				}
+			}
+		
+	} 
+	*/
 	switch( msg.op ) {
 	case "data":
 		gameState.board = msg.board;
@@ -147,6 +161,7 @@ function parseMessage( ws, msg ) {
 		//if( !gameState.thisPlayer) debugger;
 		//gameEvents = new Events();
 		gameEvents.on( "load" );
+		// already sent appropriate game data events...
 		return;
 	case "color":
 		setPlayerColor( msg.name, msg.color );
@@ -166,18 +181,24 @@ function parseMessage( ws, msg ) {
 		}
 		gameState.game.currentPlayer = msg.current;
 		break;
-	case "stock":
+	case "pay": 
 		{
-			
+			for( let player of gameState.game.users ) {
+				if( player.name === msg.user) {
+					player.cash = msg.balance;
+					break;
+				}
+			}
+		}
+		break;
+	case "give": 
+	case "take": 
+		{
 			for( let player of gameState.game.users ) {
 				if( player.name === msg.user) {
 					for( let stock of player.stocks ) {
-						if( stock.id === msg.stock.id ) {
-							if( player.name === gameState.username ) {
-								// tell localUI(s)
-								gameEvents.on( msg.op, msg );
-							}
-							stock.shares = msg.stock.shares;
+						if( stock.id === msg.stock ) {
+							stock.shares = msg.balance;
 							break;
 						}
 					}
@@ -185,12 +206,37 @@ function parseMessage( ws, msg ) {
 				}
 			}
 		}
+		break;
+	case "stock":
+		{
+			
+			for( let player of gameState.game.users ) {
+				if( player.name === msg.user) {
+					for( let stock of player.stocks ) {
+						if( stock.id === msg.stock.id ) {
+							stock.shares = msg.stock.shares;
+							if( player.name === gameState.username ) {
+								// tell localUI(s)
+								gameEvents.on( msg.op, msg );
+							}
+							break;
+						}
+					}
+					break;
+				}
+			}
+		}
+		// already sent appropriate stock events...
 		return;
 	case "player":
 		{
 			const old = gameState.players.find( player=>player.name===msg.user.name );
 			if( !old ) {
 				gameState.players.push( msg.user );
+			} 
+			else {
+				Object.assign( old, msg.user );
+				msg.user = old;
 			}
 		}
 		/* fallthrough */
@@ -198,7 +244,6 @@ function parseMessage( ws, msg ) {
 		break;
 	}
 	gameEvents.on( msg.op, msg );
-
 }
 
 

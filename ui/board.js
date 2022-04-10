@@ -187,6 +187,10 @@ export class GameBoard extends Popup {
 		protocol.on( "player", (msg)=>{
 			if( this.showing ) {
 				this.playerStatus.addPlayerRow( msg.user );
+				if( msg.user.space ) {
+					const space = this.board.spaces.find( (space)=>space.id === msg.user.space );
+					this.board.addToken( msg.user, space );
+				}
 			}
 		} );
 		protocol.on("quit", (msg)=>{
@@ -258,7 +262,7 @@ export class GameBoard extends Popup {
 		this.gameBoardOverlay.addEventListener( "mousedown", (evt)=>this.mousedown(event) );
 
 		this.sellForm = new SellForm( this, this.board.stocks );
-        this.stockForm = new StockForm( this, this.board.stocks );
+	        this.stockForm = new StockForm( this, this.board.stocks );
 		this.playerStatus = new PlayerStatusForm( this, this.thisPlayer, this.board.stocks );
 
 
