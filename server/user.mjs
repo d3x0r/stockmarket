@@ -109,7 +109,7 @@ export class User {
 			//console.log( "CASH Change:", this, cash );
 			this.cash += cash;
 			//if( isNaN( this.cash ) ) debugger;
-			const msg = JSOX.stringify( {op:"pay",user:this.name, balance:this.cash, credit:this.#space_.pay } )
+			const msg = JSOX.stringify( {op:"pay",user:this.name, balance:this.cash, credit:cash } )
 			if( msg ) for( let peer of this.game.users ) peer.queue.push(msg);
 		}
 	}
@@ -141,7 +141,7 @@ export class User {
 				break;
 			}
 		}
-		console.log( "Message to give?", msg, this.game.users );
+		//console.log( "Message to give?", msg, this.game.users );
 		if( msg ) for( let peer of this.game.users ) peer.queue.push(msg);
 	}
 
@@ -195,9 +195,11 @@ export class User {
 			
 			if( stock.id === stockId ) {
 				const value = stock.value;
-				console.log( "Verify that player has cash?", this.cash, value );
-				this.cash -= shares*value;
-				this.give( stockId, shares );
+				if( shares*value <= this.cash ) {
+					//console.log( "Verify that player has cash?", this.cash, value );
+					this.charge( shares*value );
+					this.give( stockId, shares );
+				}
 				return true;
 			}
 		} );

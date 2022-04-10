@@ -11,8 +11,8 @@ export class Market {
 		for( let s = 0; s < stockList.length; s++ ) {
 			const stock = stockList[s];
 			const marketLines = Array.from( {length:stages*2+1} );
-			const values = stockList.map( s=>s.minimum );
-			this.stocks.push( { id:stock.id, lines:marketLines } );
+			//const values = stockList.map( s=>s.minimum );
+			this.stocks.push( { id:stock.id, minimum:stock.minimum, lines:marketLines } );
 			for( let line = 0; line <= stages; line++ ) {
 				let staging = stock.staging[0];
 				let val;

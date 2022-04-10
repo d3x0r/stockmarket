@@ -164,6 +164,10 @@ export class SellForm extends Popup {
 			this.hide();
 			protocol.sendNoSale();
 		} );
+		protocol.on("pay",()=>{
+			if( protocol.gameState.thisPlayer.cash < 0 ) 
+				this.show( protocol.gameState.thisPlayer, null, -protocol.gameState.thisPlayer.cash );
+		} );
 		this.center();
 		this.hide();
         }
@@ -180,7 +184,7 @@ export class SellForm extends Popup {
 				if( pstock.id === stock.id ) {
 					this.owned.textContent = pstock.shares;
 					this.stockName.textContent = stock.name;
-					this.sellsFor.textContent = popups.utils.to$(stock.value*100);
+					this.sellsFor.textContent = popups.utils.to$((this.target?stock.minValue:stock.value)*100);
 					break;
 				}
 			}
@@ -237,7 +241,8 @@ export class SellForm extends Popup {
 
 	set stock( val ) {
 		this.stockName.textContent = val.name;
-		this.sellsFor.textContent = popups.utils.to$(val.value);
+		const value = ( this.target ) ? val.minValue:val.value;
+		this.sellsFor.textContent = popups.utils.to$(value);
 		this.shareCount = 0;		
 		this.center();
 	}
@@ -257,7 +262,7 @@ export class SellForm extends Popup {
 			let tot = 0;
 			for( let row of this.rows ) {
 				if( row.wantShares ) {
-					tot += row.wantShares * row.stock.value;
+					tot += row.wantShares * this.target?row.stock.minValue:row.stock.value;
 				}
 			}
 
@@ -289,6 +294,7 @@ export class SellForm extends Popup {
 
 	addRow( userStock, table ) {
 		const stock = userStock && this.stocks.find( stock=>stock.id===userStock.id );
+		const form = this;
 		const row = {
 			row : document.createElement( "div" ),
 			label : document.createElement( "span" ),
@@ -303,10 +309,14 @@ export class SellForm extends Popup {
 			userStock,
 			selected : false,
 			refresh() {
-				row.value.textContent = popups.utils.to$(row.stock.value*100);
+				let val= 0;
+				if( form.target ) 
+					row.value.textContent = popups.utils.to$((val=row.stock.minValue)*100);
+				else
+					row.value.textContent = popups.utils.to$((val=row.stock.value)*100);
 				row.shares.textContent = row.userStock.shares;
 				row.sellShares.textContent = row.wantShares;
-				row.sellValue.textContent = row.wantShares * row.stock.value;
+				row.sellValue.textContent = row.wantShares * val;
 				if( row.userStock.shares ) row.row.style.display = "";
 				else row.row.style.display = "none";
 			}
@@ -381,7 +391,7 @@ export class SellForm extends Popup {
 				this.shareCount = row.wantShares;
 				this.shares.value = this.shareCount;
 
-				this.show( protocol.gameState.thisPlayer, row.stock, false );
+				this.show( protocol.gameState.thisPlayer, row.stock, form.target );
 
 
 
