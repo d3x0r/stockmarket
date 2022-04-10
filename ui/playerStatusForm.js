@@ -140,6 +140,24 @@ export class PlayerStatusForm extends Popup {
 		protocol.on( "stock", (msg)=>this.refresh(msg) );
 		protocol.on( "give", (msg)=>this.refresh(msg) );  // stock split - giving shares
 		protocol.on( "take", (msg)=>this.refresh(msg) );  // stock sell - taking shares
+		protocol.on( "load", ()=>{
+			//this.player = player;
+			// this.stocks are the board's stocks..
+			//while( this.playerRows.length ) this.removePlayer( this.playerRows[0].name );
+			for( let gameplayer of protocol.gameState.players ){
+				if( gameplayer.name === protocol.gameState.username ) {
+					this.player = gameplayer;
+				} else {
+					this.addPlayerRow( gameplayer );
+				}
+			}
+			
+			for( let s = 0; s < player.stocks; s++ ){
+				this.row[s].userStock = this.player.stocks[s];
+				const stock = this.stocks.find( stock=>stock.id===this.player.stocks[s].id );
+			}
+			this.refresh();
+		} );
 		this.refresh();
     }
 

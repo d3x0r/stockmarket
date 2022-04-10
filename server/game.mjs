@@ -171,15 +171,15 @@ function getHandler( ws, shared ) {
 			}
 			break;
 		case "buy":
-			console.log( "User bought; sending next turn", msg );
+			//console.log( "User bought; sending next turn", msg );
 			user.buy( msg );
 			break;
 		case "sell":
-			console.log( "User sold something; unlocking selling mode?", msg );
+			//console.log( "User sold something; unlocking selling mode?", msg );
 			user.sell( msg );
 			break;
 		case "sale":
-			console.log( "User sold something; unlocking selling mode?", msg );
+			//console.log( "User sold something; unlocking selling mode?", msg );
 			user.sale( msg );
 			break;
 		case "selling":
@@ -217,6 +217,7 @@ function getHandler( ws, shared ) {
 					
 				}
 				lobby.games.push( game );
+				user.reset();
 
 				const newMsg = JSOX.stringify( {op:"part", user:user.name } ) + JSOX.stringify( {op:"game", game:msg.name } )
 				lobby.users.forEach( user=>{
@@ -289,6 +290,7 @@ function getHandler( ws, shared ) {
 			} );
 		}
 
+		user.reset();
 		game.users.push( user );
 		user.game = game; // setting user game sets inPlay to false.
 		user.inPlay = game.inPlay;

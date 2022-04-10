@@ -108,8 +108,8 @@ export class Game {
 				} else {
 					if( thisPlayer.rolled ) {
 						thisPlayer.charge( board.startFee );
-						console.log( "Charging player fee:", board.startFee, thisPlayer );
-						console.log( "If they still have money? Go!", thisPlayer.cash );
+						//console.log( "Charging player fee:", board.startFee, thisPlayer );
+						//console.log( "If they still have money? Go!", thisPlayer.cash );
 						if( thisPlayer.cash > 0 ) 
 							go = true;
 					}
@@ -279,7 +279,7 @@ export class Game {
 
 	getMoves( user, space, number, left ) {
 		// gets what moves a player can do, and tells that player.
-		console.log( "user getting moves:", user );
+		//console.log( "user getting moves:", user );
 		let choices = [{stock:user.meeting?user.meeting:space.stock?.id||0,space:space,dir:left, split:space.split }];
 		{
 			let n = 0;

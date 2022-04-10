@@ -26,6 +26,15 @@ export class Stock {
 		};
     }
 
+	get minValue() {
+		const market = this.#game.market;
+		for( let stock of market.stocks ) {
+			if( stock.id === this.id ) {
+				return stock.minimum;
+			}
+		}
+		return 0;
+	}
 	get value() {
 		const line = this.#game.marketLine;
 		const market = this.#game.market;
