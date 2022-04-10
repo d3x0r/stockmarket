@@ -191,6 +191,8 @@ export class GameBoard extends Popup {
 		} );
 		protocol.on("quit", (msg)=>{
 				this.playerStatus.removePlayer( msg.user );
+				
+				this.board.removeToken( msg.user );
 			} );
 		protocol.on( "space", (msg)=>{
 			console.log( "got playerMove:", msg );
@@ -424,8 +426,40 @@ export class Board {
 		}
 	}
 
+	removeToken( user ) {
+		const game = protocol.gameState.game;
+
+		//this.currentPlayer = game.users[game.currentPlayer];
+		let gameuser = null;
+		for( let u = 0; u < game.users.length; u++ ) {
+			if( game.users[u].name === user ) {
+				gameuser = game.users[u];
+				break;
+			}
+		}
+
+		// find the token list for the user's current space
+		// find the token in the list on the space, remove token, if empty, remove list.
+		for( let t = 0; t < this.tokens.length; t++ )  {
+			const tokenList = this.tokens[t];
+			if( tokenList.id === gameuser.space ) {
+				for( let u = 0; u < tokenList.users.length; u++ ) {
+					const us = tokenList.users[u];
+					if( us === gameuser ) {
+						tokenList.users.splice( u, 1 );
+						if( !tokenList.users.length ) {
+							this.tokens.splice( t, 1 );
+						}
+						break;
+					}
+				}				
+				break;
+			}
+		}
+	}
+
 	addToken( user, space ) {
-		console.log( "Player is now moved...", user.name, space.id );
+		//console.log( "Player is now moved...", user.name, space.id );
 		let next = -1;;
 		let cur = -1;
 		{
@@ -439,7 +473,7 @@ export class Board {
 				}
 			}
 		}
-	console.log( "player current, next is:", cur, next );
+		//console.log( "player current, next is:", cur, next );
 		if( cur >= 0 ) {	
 			const list = this.tokens[cur];//tokenList.users;
 			for( let u = 0; u < list.users.length; u++ ) {

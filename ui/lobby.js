@@ -25,7 +25,7 @@ export class Lobby extends Popup {
 				popups.Alert( "Failed to create game; name already exists...\nUse Join Instead?" );
 			}
 			else
-				this.addGame( msg.game );
+				this.addGame( {name:msg.game} );
 		} );		
 		protocol.on( "user", (msg)=>{
 			this.addUser( msg.user );
@@ -60,7 +60,7 @@ export class Lobby extends Popup {
 	}
 	reload( msg ) {
 		while( this.game_rows.length ) this.dropGame( this.game_rows[0].game.name )
-		while( this.user_rows.length ) this.dropUser( this.user_rows[0].user )
+		while( this.user_rows.length ) this.dropUser( this.user_rows[0].user.name )
 		msg.lobby.forEach( user=>this.addUser(user ) );
 		msg.rooms.forEach( game=>this.addGame( game ) );
 
@@ -83,7 +83,7 @@ export class Lobby extends Popup {
 		this.userList.appendChild( row );
 	}
 	dropUser( user ) {
-		const userId = this.user_rows.findIndex( ur=>ur.user.name === user.name );
+		const userId = this.user_rows.findIndex( ur=>ur.user.name === user );
 		if( userId >= 0) {
 			const realUser = this.user_rows.splice( userId, 1 );
 			realUser[0].row.remove();
