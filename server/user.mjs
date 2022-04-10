@@ -229,6 +229,7 @@ export class User {
 
 	sale( msg ) {
 		let totCash= 0;
+		let min = !!msg.target;
 		for( let stock of msg.invoice ) {
 			const stockId = stock.stock;
 			const shares = stock.shares;
@@ -236,7 +237,7 @@ export class User {
 				
 				if( stock.id === stockId ) {
 					//const value = 
-					const value = stock.value;
+					const value = min?stock.minValue:stock.value;
 					stock.shares -= shares;
 					totCash += shares*value;
 					return true;

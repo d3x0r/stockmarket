@@ -18,8 +18,8 @@ class GameState extends Events {
 	events = new Events();
 }
 
-export function sendSale( invoice ) {
-	send( {op:"sale", invoice })
+export function sendSale( target, invoice ) {
+	send( {op:"sale", target, invoice })
 }
 
 export function sendSelling() {
