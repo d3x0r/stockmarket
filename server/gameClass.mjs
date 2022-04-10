@@ -123,7 +123,7 @@ export class Game {
 			if( space.broker ) {
 				const shares = thisPlayer.stocks.reduce(  ( (acc,r)=>acc+=r.shares ), 0 );
 				const fee = shares * board.brokerFee;
-				thisPlayer.pay( fee );
+				thisPlayer.charge( fee );
 				if( thisPlayer.cash > 0 ) {
 					go = true;
 				} else {
