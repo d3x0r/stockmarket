@@ -25,6 +25,7 @@ export class SellForm extends Popup {
 	rows = []; // holders for the stock selector table?
 	curRow = null;
 	saleConfirmNotice= null;
+	#lastSale = null;
 	constructor( parent, stocks ) {
         	super( "Sell Stocks", parent, {suffix:"-sell"} );
 
@@ -113,7 +114,8 @@ export class SellForm extends Popup {
 	        this.shareMode = popups.makeButton( row, "Buy Shares", ()=>this.setShares( ) ) 
 		this.shareMode.className = "stock-sell-button-enable-shares";
 		this.shareMode.buttonInner.className = "stock-sell-inner-button-enable-share";
-        this.cashMode = popups.makeButton( row, "Use Cash", ()=>this.setCash( ) ) 
+
+		this.cashMode = popups.makeButton( row, "Use Cash", ()=>this.setCash( ) ) 
 		this.cashMode.className = "stock-sell-button-disable-cash";
 		this.cashMode.buttonInner.className = "stock-sell-inner-button-disable-cash";
                 row.appendChild( document.createElement( "br" ) );
@@ -169,6 +171,7 @@ export class SellForm extends Popup {
 	show( player, stock, forced ) {
 
 		this.stock = stock;
+		
 		this.target = forced;
 
 		console.log( "Is player and stock enough?", player, stock );
@@ -177,12 +180,17 @@ export class SellForm extends Popup {
 				if( pstock.id === stock.id ) {
 					this.owned.textContent = pstock.shares;
 					this.stockName.textContent = stock.name;
-					this.sellsFor.textContent = stock.value;
+					this.sellsFor.textContent = popups.utils.to$(stock.value*100);
 					break;
 				}
 			}
 		}else {
+			this.curRow = null;
+			this.shareCount	= 0;
+			this.shares.value = this.shareCount;
 			for( let row of this.rows ) {
+				row.button.buttonInner.className = "button-inner-stock-sell-select-disabled";
+				row.selected = false;
 				row.wantShares = 0;
 				row.refresh();
 			}			
@@ -199,15 +207,23 @@ export class SellForm extends Popup {
 	}
 
 	makeSale() {
-		const sale = this.rows.map( (row)=>({
+		const  getStockName = (id)=> {
+			const stock = this.stocks.find( stock=>stock.id===id);
+			return stock.name;
+		}
+
+		let sale = this.#lastSale = this.rows.map( (row)=>({
 			shares:row.wantShares, stock:row.stock.id
 		})).filter( item=>item.shares );
 		let msg = "Are you sure you want to Sell:<br>";
-		sale.forEach( item=>msg = msg+"Shares:"+item.shares+ " of:" + "getStockName" + "<BR>")
+		sale.forEach( item=>msg = msg+item.shares+(item.shares===1?" share":" shares")+" of " +getStockName( item.stock ) + "<BR>")
+		msg += "for: " + this.cost.textContent;
+		const okay = ()=>{
+				protocol.sendSale( this.#lastSale );
+				this.hide();
+			}
 		if( !this.saleConfirmNotice ) 
-			this.saleConfirmNotice = popups.simpleNotice( "Confirm", null, ()=>{
-				protocol.sendSale( sale );
-			}, ()=>{
+			this.saleConfirmNotice = popups.simpleNotice( "Confirm", null, okay, ()=>{
 				
 			});
 		this.saleConfirmNotice.textOutput.innerHTML = msg;
@@ -233,6 +249,8 @@ export class SellForm extends Popup {
 
 	setShareCount( n ) {
 		if( this.curRow ) {
+			//if( n > this.curRow.userStock.shares ) n = this.curRow.userStock.shares;
+
 			this.shares.value = this.shareCount;
 			this.curRow.wantShares = this.shareCount;
 
@@ -256,8 +274,10 @@ export class SellForm extends Popup {
 	}
 	press( n ) {
 		console.log( "Want to add N shares(dollars?", n );
-		if( this.stock ) {
+		if( this.stock ) {			
 			this.shareCount += n;
+			if( this.shareCount > this.curRow.userStock.shares )
+				this.shareCount = this.curRow.userStock.shares;
 			if( this.shareCount < 0 ) this.shareCount = 0;
 	
 			this.setShareCount( this.shareCount );
@@ -283,7 +303,7 @@ export class SellForm extends Popup {
 			userStock,
 			selected : false,
 			refresh() {
-				row.value.textContent = '$'+row.stock.value;
+				row.value.textContent = popups.utils.to$(row.stock.value*100);
 				row.shares.textContent = row.userStock.shares;
 				row.sellShares.textContent = row.wantShares;
 				row.sellValue.textContent = row.wantShares * row.stock.value;

@@ -29,9 +29,15 @@ export class PlayerStatusForm extends Popup {
 	otherPlayersFrame = document.createElement( 'div' );
 
 	constructor( parent, player, stocks ) {
-        super( "Player Status...", parent, {suffix:"-status", noCaption:true} );
+        super( "Player Status...", parent, {suffix:"-status", noCaption:true, id:"Player Status Form"} );
 		this.player = player;
 		this.stocks = stocks;
+
+		if( !this.divFrame.style.left ) {
+			// position roughly...
+			this.divFrame.style.left="92vh";
+			this.divFrame.style.top="5vh";
+		}
 
 		const playerFrame = document.createElement( 'div' );
 		playerFrame.className = "status-player-frame";
@@ -73,10 +79,6 @@ export class PlayerStatusForm extends Popup {
 		//this.tableSet.appendChild( this.table2 );
 		this.appendChild( this.tableSet );
 
-
-		// position roughly...
-		this.divFrame.style.left="92vh";
-		this.divFrame.style.top="5vh";
 
 		protocol.on( "buying", (msg)=>{
 			const playerRow = this.playerRows.find( row=>row.player.name===msg.name );
@@ -133,10 +135,11 @@ export class PlayerStatusForm extends Popup {
 				playerRow.refresh( "Moving" );
 			}
 		});
-		protocol.on( "pay", (msg)=>this.refresh() );
-		protocol.on( "market", (msg)=>this.refresh() );
-		protocol.on( "stock", (msg)=>this.refresh() );
-		protocol.on( "give", (msg)=>this.refresh() );
+		protocol.on( "pay", (msg)=>this.refresh(msg) );
+		protocol.on( "market", (msg)=>this.refresh(msg) );
+		protocol.on( "stock", (msg)=>this.refresh(msg) );
+		protocol.on( "give", (msg)=>this.refresh(msg) );  // stock split - giving shares
+		protocol.on( "take", (msg)=>this.refresh(msg) );  // stock sell - taking shares
 		this.refresh();
     }
 
@@ -227,7 +230,15 @@ export class PlayerStatusForm extends Popup {
 
 		//super.show();
 	}
-	refresh( ) {
+	refresh( why ) {
+		if( why ) {
+			// do a general update for the market.
+			if( why.op !== "market" )
+				if( why.user !== protocol.gameState.username ) {
+					console.log( "Just update OTHER player status:", why );
+					return;
+				}
+		}
 		const self = protocol.gameState.thisPlayer;
 
 

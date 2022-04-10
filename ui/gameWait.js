@@ -58,6 +58,12 @@ export class GameWait extends Popup {
 		this.center();
         }
 
+	show() {
+		super.show();
+		this.center();
+
+	}
+
 	readyPlayer( player ) {
 		const playerId = this.#rows.findIndex( r=>player?(r.player.name === player.name):this.username===r.player.name ) ;
 		if( playerId >= 0 ){

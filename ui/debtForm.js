@@ -11,7 +11,7 @@ export class DebtForm extends Popup {
 	table2 = document.createElement( "div" );
 
 	constructor( parent  ) {
-        	super( null, parent, {suffix:"-stock", noCaption:true} );
+        	super( null, parent, {suffix:"-debt", noCaption:true} );
 
 		this.table.className = "stock-table";
 		this.table.style.display ="inline-block";
@@ -24,7 +24,9 @@ export class DebtForm extends Popup {
 
 		this.divFrame.style.left="18.75%";
 		this.divFrame.style.top="65%";
-
+	
+		console.log( "Do we still need a forced sell screen?" );
+		this.hide();
         }
 
 	addRow( stock, table ) {
