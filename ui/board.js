@@ -202,7 +202,7 @@ export class GameBoard extends Popup {
 			console.log( "got playerMove:", msg );
 			const space = this.board.spaces.find( (space)=>space.id === msg.id );			
 			if( msg.name === protocol.gameState.username ) {
-				if( space.stock && !space.sell ) {
+				if( space && space.stock && !space.sell ) {
 					if( space.meeting )
 						this.buyForm.show( this.thisPlayer, space.stock, 1 );
 					else
@@ -469,9 +469,10 @@ export class Board {
 		{
 			for( let t = 0; t < this.tokens.length; t++ )  {
 				const tokenList = this.tokens[t];
-				if( tokenList.id === space.id ) {
-					next = t;
-				}
+				if( space )
+					if( tokenList.id === space.id ) {
+						next = t;
+					}
 				if( tokenList.id === user.space ) {
 					cur = t;
 				}
@@ -494,13 +495,16 @@ export class Board {
 		}
 
 		if( next < 0 ) {
-			this.tokens.push( {id:space.id,space:space,users:[user]} );
+			if( space )
+				this.tokens.push( {id:space.id,space:space,users:[user]} );
 		}else{
 			this.tokens[next].users.push( user );
 		}
 			
-
-		user.space = space.id;
+		if( space )
+			user.space = space.id;
+		else
+			user.space = 0;
 	}
 
 	draw( ctx ) {
