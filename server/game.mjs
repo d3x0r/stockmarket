@@ -24,25 +24,26 @@ export const games = new Map();
 export function connect(ws) {
 	//console.log( "Connect:", ws );
 	const shared = { lastMessage : 0 };
-	ws.onmessage = getHandler( ws, shared );
-	ws.onclose = function() {
+	const handler = ws.onmessage = getHandler( ws, shared );
+	ws.onclose = function(code,reason) {
         	console.log( "Remote closed..." );
+		handler.close( code, reason );
 		clearTimeout( pingTimer );
 	};
 
 	let pingTimer =null;
 	pingTick();
 	function pingTick(){
+		let now = Date.now();
 		if( ws.readyState === 1 ) {
-			let now = Date.now();
 			if( (now - shared.lastMessage) >= 30000 )     {
 				//console.log( "Ping", (now - ws.lastMessage) );
 				ws.ping();
-				shared.lastMessage = now;
 			}
 			
-			pingTimer = setTimeout( pingTick, 30000 - (now - shared.lastMessage) );
 		}
+		shared.lastMessage = now;
+		pingTimer = setTimeout( pingTick, 30000 - (now - shared.lastMessage) );
 	}
 	
 }
@@ -79,10 +80,33 @@ function getHandler( ws, shared ) {
 				oldUser.ws = ws;
 				user = oldUser;
 				if( oldUser.game ) {
+					let found = false;
 					// resume game state; skip lobby
+					for( let u = 0; u < user.game.users.length; u++ ) {
+						const gameuser = user.game.users[u];
+						if( gameuser === user ) {
+							found = true;
+						}
+					}
+
+					if( !found ) {
+						// let the other people know... 
+						// they get a whole user state to add to their game...
+						const gameJoin = JSOX.stringify( { op:"player", user:user } );
+						// before adding this user, tell all old users about this new user.
+						for( let user of game.users ) {
+							user.ws.send( gameJoin );
+						}
+
+						user.game.push( found );
+
+					}
+					// tell the player joining about the game.
 					const hello = JSOX.stringify( { op:"data", stocks:stocks, board:board, game:oldUser.game } );
 					ws.send( hello );
+					// this user can never have been the current player.
 					break;
+				} else {
 				}
 			}else {
 				user = new User( msg.name );
@@ -190,6 +214,12 @@ function getHandler( ws, shared ) {
 				}
 				lobby.games.push( game );
 
+				JSOX.stringify( {op:"game", game:msg.name } )
+				lobby.users.forEach( user=>{
+					// tell everyone else in the lobby about the new game.
+					user.ws.send( newMsg );
+				} );
+
 				joinGame( user, game );
 
 			}
@@ -199,6 +229,33 @@ function getHandler( ws, shared ) {
 		
 	}catch(err){ console.log( "MessageError:", err);        }
         }
+
+	dispatchMessage.close = function() {
+		const user_ = user.name;
+		//users.get( msg.name )
+		if( user.game ) {
+			const partGame = JSOX.stringify( {op:"quit", user:user_ } );
+			for( let u = 0; u < user.game.users.length; u++ ) {
+				const gameuser = user.game.users[u];
+				if( gameuser != user ) {
+					// tell the other people this guy left...
+					gameuser.ws.send( partGame );
+				} else  {
+					// leave the game reference on the user, so we can keep their game status?
+					user.game.users.splice( u, 1 );
+					u--; // retry this element of the array.
+				}
+			}
+		}else{
+			const uid = lobby.users.findIndex( u=>u===user_ );
+			if( uid >= 0 ) {                                                	
+				lobby.users.splice( uid, 1 );
+				// tell everyone in the lobby this guy left.
+				const newMsg = JSOX.stringify( {op:'part',user:user_} );
+				lobby.users.forEach( user=>user.ws.send(newMsg )  );
+			}
+		}
+	}
 
 	function joinGame(user, game) {
 
@@ -215,18 +272,23 @@ function getHandler( ws, shared ) {
 			user.ws.send( gameJoin );
 		}
 
+		// tell the lobby this player is leaving
+		if( !user.game ) {
+			const newMsg= JSOX.stringify( {op:"part", user:user } );  
+			lobby.users.forEach( user=>{
+				user.ws.send( newMsg );
+			} );
+		}
+
 		game.users.push( user );
 		user.game = game; // setting user game sets inPlay to false.
 		user.inPlay = game.inPlay;
 
+		// tell the player joining the game about the game...
 		const hello = JSOX.stringify( { op:"data", stocks:stocks, board:board, game:game } );
 		user.ws.send( hello );
 
 		// user leave lobby + add game to lobby
-		const newMsg= JSOX.stringify( {op:"part", user:user } )  + JSOX.stringify( {op:"game", game:game } );  
-		lobby.users.forEach( user=>{
-			user.ws.send( newMsg );
-		} );
 
 	}
 	function joinLobby_( user_ ) {
