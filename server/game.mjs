@@ -181,6 +181,9 @@ function getHandler( ws, shared ) {
 		case "sale":
 			//console.log( "User sold something; unlocking selling mode?", msg );
 			user.sale( msg );
+			if( user.rolled ) {
+				user.game.nextTurn();
+			}
 			break;
 		case "selling":
 			user.selling = true;
