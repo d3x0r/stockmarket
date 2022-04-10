@@ -3,6 +3,8 @@ import {Popup,popups} from "/node_modules/@d3x0r/popups/popups.mjs"
 import * as protocol from "./gameProtocol.js"
 
 export class SellForm extends Popup {
+	forcedSale = document.createElement( "div" );
+	forcedSaleAmount = document.createElement( "div" );
 	stockName = document.createElement( "span" );
 	sellsFor = document.createElement( "span" );
 	shares = document.createElement( "input" );
@@ -47,6 +49,19 @@ export class SellForm extends Popup {
 	
 
 		let row,label;
+
+                row = this.forcedSale;
+                row.className = 'stock-sell-row-stock-forced';
+		row.style.display = "none";
+                label = document.createElement( "span" );
+                label.className = 'stock-sell-stock-forced';
+                label.textContent = "Required to sell:";
+                row.appendChild( label );
+                row.appendChild( this.forcedSaleAmount );
+		this.forcedSaleAmount.textContent = "$0";
+                this.forcedSaleAmount.className = 'stock-sell-stock-forced-value';
+                this.appendChild( row );
+
                 
                 row = document.createElement( "div" );
                 row.className = 'stock-sell-row-stock';
@@ -177,6 +192,14 @@ export class SellForm extends Popup {
 		this.stock = stock;
 		
 		this.target = forced;
+		if( forced && !stock ) {
+			this.forcedSale.style.display = "";
+			this.forcedSaleAmount.textContent = popups.utils.to$( this.target*100 );
+		} else {
+			if( !stock && !forced ) {
+				this.forcedSale.style.display = "none";
+			}
+		}
 
 		console.log( "Is player and stock enough?", player, stock );
 		if( stock ) {
@@ -223,7 +246,7 @@ export class SellForm extends Popup {
 		sale.forEach( item=>msg = msg+item.shares+(item.shares===1?" share":" shares")+" of " +getStockName( item.stock ) + "<BR>")
 		msg += "for: " + this.cost.textContent;
 		const okay = ()=>{
-				protocol.sendSale( this.#lastSale );
+				protocol.sendSale( this.target, this.#lastSale );
 				this.hide();
 			}
 		if( !this.saleConfirmNotice ) 
@@ -262,7 +285,7 @@ export class SellForm extends Popup {
 			let tot = 0;
 			for( let row of this.rows ) {
 				if( row.wantShares ) {
-					tot += row.wantShares * this.target?row.stock.minValue:row.stock.value;
+					tot += row.wantShares * (this.target?row.stock.minValue:row.stock.value);
 				}
 			}
 
