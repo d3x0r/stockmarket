@@ -33,6 +33,48 @@ Squares are also marked with `Up` and `Down` indicators which change the current
 
 `Quit` allows you to sign out of a game.  If you merely close your client and disconnect, your game will remain with you as a participant for the next time you login.
 
+## Self Hosting?  Re-Hosting?
+
+This should be straight forward... (Recommend at least more experience than 0)
+
+Most classes are kept one per file; here's a rough cover of functionality.
+
+- clone this repository
+- npm install .
+  - This will download some packages hosted on npmjs.com, build 1 c/c++ native plugin, and a few JS utilities for the display and protocols.
+  - the build process will take 30 seconds to a minute maybe longer?  Depends on the speed of your system... but it's only a few files, so it's mostly CPU time compiling.
+- npm run start
+  - this just runs `node  --experimental-loader=sack.vfs/import.mjs  server/server.mjs` 
+    - `--experimental-loader=sack.vfs/import.mjs` is a preload script to add import/require for `.json6` and `jsox`.
+    - [server/server.mjs](server/server.mjs) - this serves HTTP static content and hosts a websocket frontend with default options to use port 8888; may specify port as a argument, or by setting an environment variable (Heroku uses the latter method).
+       - [server/game.mjs](server/game.mjs) - this handles `accept()` and `connect()` methods for sockets, and provides a `onmessage()` handler.
+         - [server/lobby.mjs](server/lobby.mjs) - this tracks who is currently in the lobby/between games.
+         - [server/gameClass.mjs](server/gameClass.mjs) - this implements the actual 'business logic' for the game.  It has an array of `User()`s.
+           - [server/user.mjs](server/user.mjs) - implements the player, has an array of `Stock()`s.  Has things like their cash and token color.
+           - [ui/StockSpace.mjs](ui/stuckSpace.mjs) - Parser, translates the generic object received from protocol to an instance of a stock.  A 'stock space' on the board is one that references a stock, and this is the information that space would reference.  The server uses it because it is `stocks.jsox` parsed from confuration to a class representation.
+           - [ui/stocks.mjs](ui/stocks.mjs) - this is a interface for a stock; it's sort of duplicated work with StockSpace; but this has convenicence functions for values.
+           - [server/market.mjs](server/market.mjs) - This class tracks the current market value; and builds the lookup table of stock values.
+
+- connect to a local ip at port `8888` (or other port if you figured it out; I doubt you'll have the environment variable set that this uses).
+  - All of these files are private to the /ui/ directory.  The server only serves content from this directory and select node_module paths `[sack.vfs, jsox, @d3x0r/*]`.
+  - [index.html](ui/index.html) - Empty; loads 'main.js'.
+    - [main.js](ui/main.js) - roughly manages the connection state and attaches the login with the lobby dialog and the game form.
+      - [gameProtocol.js](ui/gameProtocol.js) - a shared connection object that provides utility API to send messages to the server, and handle responses from the server, dispatching to registered event handler(s).
+         - [events.js](ui/events.js) - a Generic `on(event,callback)`/`on(event,data)` event tracker.  (so much state to track, don't do it wrong....)
+      - [login.js](ui/login.js) - creates a form that asks for the player name, and has some events it triggers on connect.  Registers some protocol events, calls some protocol methods.
+      - [lobby.js](ui/lobby.js) - once connected, main open the lobby which gets updated with any other users connected, and logged in.  If they disconnect; they are removed; if they join a game; they are removed; if a game is created; it will appear; if a game is destroyed (last player quits), it is removed.
+      - [board.js](ui/board.js) - This draws the game board, adds the game board to the body.  Hosts the game state mostly.  (This is a multi-class module, and could be split the board, the UI interactions, the animations, The game state,...
+        - [gameWait.js](ui/gameWait.js) - This is a window that waits for other player to join, allowing you to choose a token color, and starting space.
+        - [buyForm.js](ui/buyForm.js) - This manages buying stocks for the player, when they land on an appropriate square.
+        - [sellForm.js](ui/sellForm.js) - Manages selling player stocks; both at the current market cost, and possibly at the miminum market value (recovering from a negative cash value).
+        - [DebtForm.js](ui/debtForm.js) - (unused?)
+        - [playerStatusForm.js](ui/PlayerStatusForm.js) - a popup window showing the current players of the game, what the die rolls have been, what your current value and stocks are.
+        - [stockForm.js](ui/stockForm.js) - this is the form that shows the central ticker on the board. 
+        - [stockSpace.mjs](ui/stockSpace.mjs) - used to configure the stock parameters.  (shared with server)
+        
+
+
+
 ![Screenshot](CoverImage.png)
 
 
