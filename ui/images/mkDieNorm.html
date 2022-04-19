@@ -1,0 +1,134 @@
+<style>
+body{
+background:#777	;
+}
+</style>
+<canvas id="canvas"/>
+
+
+<script>
+const canvas = document.getElementById( "canvas");
+const squareSize= canvas.width = 128;
+
+canvas.height = 128;
+canvas.style.width = "100%";
+
+const ctx = canvas.getContext("2d" );
+
+
+
+
+
+	ctx.clearRect(0,0,squareSize,squareSize );
+	var _output = ctx.getImageData(0, 0, squareSize, squareSize );
+	var output = _output.data;
+
+
+	function plot( x_, y_, c ) {
+		if( x_ < minScale || y_ < minScale ) return
+		if( x_ > maxScale || y_ > maxScale ) return
+		const x = unit(x_);
+		const y = unit(-y_);
+		output[((x+y*squareSize)<<2)+0] = c[0];
+		output[((x+y*squareSize)<<2)+1] = c[1];
+		output[((x+y*squareSize)<<2)+2] = c[2];
+		output[((x+y*squareSize)<<2)+3] = c[3];
+	}
+
+
+		const c = [0,0,0];
+
+const mode = 1;
+
+       // this is the outside endge;
+for( let x = 0; x < 128; x++ ) {
+	for( let y = 0; y < 128; y++ ) {
+
+	let rx = (x-64)/64;
+	let ry = (64-y)/64;
+
+		if( rx > -0.9 ) 
+			if( rx > 0.9 ) rx=(rx-0.9)*10; else rx = 0;
+		else
+			rx = (rx+0.9)*10;
+		if( ry > -0.9 ) if( ry > 0.9 ) ry = (ry-0.9)*10; else ry = 0;
+		else
+			ry = (ry+0.9)*10;
+
+
+
+		c[0] = (rx+1)*128;
+		c[1] = (ry+1)*128;
+
+
+		const zfix = 1-(rx*rx+ry*ry);
+		if( zfix < 0 ) c[2] = 128;
+		else c[2] = 128+127 * Math.sqrt( zfix );
+
+		output[(x+y*128)*4+0] = c[0];
+		output[(x+y*128)*4+1] = c[1];
+		output[(x+y*128)*4+2] = c[2];
+		output[(x+y*128)*4+3] = 255;
+	}
+}
+
+	const faces = [  { o1: [64-16],
+				o2 : [64-16]},
+	
+
+			{ o1: [32-16,96-16],
+				o2 : [32-16,96-16]},
+	         { o1: [32-16,96-16,64-16 ],
+				o2 : [32-16,96-16,64-16]},
+	         { o1: [32-16,96-16,96-16, 32-16 ],
+				o2 : [32-16,96-16,32-16,96-16]},
+	         { o1: [32-16,96-16,96-16, 32-16,64-16 ],
+				o2 : [32-16,96-16,32-16,96-16,64-16]},
+	         { o1: [32-16,96-16,96-16, 32-16,64-16, 64-16 ],
+				o2 : [32-16,96-16,32-16,96-16,32-16, 96-16]},
+			];
+
+
+
+		const o1 = faces[mode-1].o1;
+		const o2 = faces[mode-1].o2;
+		for( p = 0; p < mode; p++ ) {
+	
+		const ofsx = o1[p];
+		const ofsy = o2[p];
+		for( let x = 0; x < 32; x++ ) {
+			for( let y = 0; y < 32; y++ ) {				
+	                
+			let rx = (x-16)/16;
+			let ry = (16-y)/16;
+	                
+                
+	                
+	                
+				const zfix = 1-(rx*rx+ry*ry);
+				if( zfix < 0 ) {
+					c[0] = 128;
+					c[1] = 128;
+					c[2] = 255;
+				}
+				else {
+					c[0] = (1-rx)*128;
+					c[1] = (1-ry)*128;
+					c[2] = 128+127 * Math.sqrt( zfix );
+				}
+	                
+				output[((ofsx+x)+(y+ofsy)*128)*4+0] = c[0];
+				output[((ofsx+x)+(y+ofsy)*128)*4+1] = c[1];
+				output[((ofsx+x)+(y+ofsy)*128)*4+2] = c[2];
+				output[((ofsx+x)+(y+ofsy)*128)*4+3] = 255;
+			}
+		}
+
+}
+
+
+	ctx.putImageData(_output, 0,0);
+
+
+
+</script>
