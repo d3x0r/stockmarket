@@ -1,7 +1,7 @@
 
-import * as THREE from "./three.js/three.module.min.js.gz"
+import * as THREE from "./three.js/three.module.min.js"
 import {lnQuat} from "./three.js/lnQuatSq.js"
-import * as CANNON from "./cannon-es/cannon-es.js.gz"
+import * as CANNON from "./cannon-es/cannon-es.js"
 
 let loader = new THREE.TextureLoader();
 
