@@ -418,8 +418,9 @@ class Viewer {
                 //this.lnQ.freeSpin( Math.PI/2, {x:1,y:1,z:0});
                 this.lnQ.update().exp( this.notself.quaternion );
 //debugger;
-                this.lnQ.freeSpin( Math.PI/2, {x:1,y:0,z:0 } );
-                this.lnQ.update().exp( this.camera.quaternion );
+//                this.lnQ.freeSpin( Math.PI/2, {x:1,y:0,z:0 } );
+//                this.lnQ.freeSpin( Math.PI, {x:1,y:0,z:1 } );
+//                this.lnQ.update().exp( this.camera.quaternion );
 
 		const bodies = this.physics.dies;
 		const meshes = this.dies;
