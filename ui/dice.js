@@ -1,6 +1,8 @@
 
+//import * as THREE from "./three.js/three.module.min.js.gz"
 import * as THREE from "./three.js/three.module.min.js"
 import {lnQuat} from "./three.js/lnQuatSq.js"
+//import * as CANNON from "./cannon-es/cannon-es.js.gz"
 import * as CANNON from "./cannon-es/cannon-es.js"
 
 let loader = new THREE.TextureLoader();
@@ -15,24 +17,123 @@ const isIOS =false /* !(
 )
 */
 ;
+const lnQWorld = new lnQuat();
+const lnQWorld2 = new lnQuat();
+const lnQTangPlane = new lnQuat();
 
 let logged = false;
 
-if( document.fullscreenEnabled && document.fullScreenElement )
-	screen.orientation.lock("portrait")
 
-const q1 = navigator.permissions.query({ name: 'accelerometer' })
-.then(result => {
-  if (result.state === 'denied') {
-    console.log('Permission to use accelerometer sensor is denied.');
-    return;
-  }
-  // Use the sensor.
-}).catch(no=>{console.log("NO:",no) });
+const q2 = navigator.permissions.query({ name: 'geolocation' })
+.then( result=>{
+ if( result.state==="denied" ){
+  console.log( "Cannot get location; absolute orientation unavailable.")
+ }else {
+
+        navigator.geolocation.getCurrentPosition(position => {
+                let { latitude, longitude } = position.coords;
+                // Show a map centered at latitude / longitude.
+                //console.log( "LOCATION", latitude, longitude);
+                //latitude = latitude*-2;
+                if( latitude> 0 ) latitude += 90;
+                else latitude = 180+latitude
+                lnQTangPlane.set( {lat:Math.PI*((latitude))/180, lng:Math.PI*(longitude)/180});
+                
+                const tmp = lnQTangPlane.z;
+
+                lnQTangPlane.z = lnQTangPlane.y;
+                lnQTangPlane.y = -tmp;//lnQTangPlane.y;
+                //lnQTangPlane.x = lnQTangPlane.x;
+                //lnQTangPlane.y = tmp;
+
+                //lnQTangPlane.x = lnQTangPlane.z;
+                //lnQTangPlane.y = lnQTangPlane.x;
+                //lnQTangPlane.x = tmp;
+
+                lnQTangPlane.dirty = true; lnQTangPlane.update();
+                
+              });
+         
+ }
+})
+
+
+
+if( document.fullscreenEnabled && document.fullScreenElement ) {
+
+	screen.orientation.lock("portrait")
+}
+else console.log( "User must manually lock screen; or pick fullscreen element." );
+
 
 
  window.addEventListener("deviceorientation", handler, true);
  window.addEventListener("devicemotion", handler2, true);
+
+ 
+ const sensor = new AbsoluteOrientationSensor({frequency:60});
+ //const sensor2 = new RelativeOrientationSensor({frequency:1});
+ //const mat4 = new Float32Array(16);
+let was = Date.now();
+ function initSensor() {
+ sensor.onerror = event => console.log(event.error.name, event.error.message);
+ //sensor2.onerror = event => console.log(event.error.name, event.error.message);
+ sensor.onreading = () => {
+   //sensor.populateMatrix(mat4);
+   const q =  sensor.quaternion;
+   //const lnQ = new lnQuat();
+   lnQuat.quatToLogQuat( {x:q[0], y:q[1], z:q[2], w:q[3] }, lnQWorld );
+   lnQWorld.x = -lnQWorld.x;
+   lnQWorld.y = -lnQWorld.y;
+   lnQWorld.z = -lnQWorld.z;
+   lnQWorld.dirty = true;
+
+   //lnQWorld2.set( lnQTangPlane ).freeSpin( lnQWorld );
+   lnQWorld2.set( lnQTangPlane ).freeSpin( lnQWorld, true );
+   //lnQWorld.freeSpin( lnQTangPlane , true);
+
+   //console.log( "A Sensor?", q, lnQWorld );
+   //sensor.stop();
+ };
+ /*
+ sensor2.onreading = () => {
+        //sensor.populateMatrix(mat4);
+        const q =  sensor2.quaternion;
+        //const lnQ = new lnQuat();
+        lnQuat.quatToLogQuat( {x:q[0], y:q[1], z:q[2], w:q[3] }, lnQWorld2 );
+        console.log( "B Sensor?", Date.now() - was, q, lnQWorld2 );
+        //was = Date.now();
+      //  sensor.stop();
+      };
+*/     
+
+ sensor.start();
+ //sensor2.start();
+ 
+}
+
+
+ if (navigator.permissions) {
+        Promise.all(
+                [navigator.permissions.query({ name: "accelerometer" }),
+                 navigator.permissions.query({ name: "magnetometer" }),
+                 navigator.permissions.query({ name: "gyroscope" })])
+             .then(results => {
+                   if (results.every(
+          result => result.state === "granted")) {
+                   initSensor();
+                 } else {
+                        console.log("Permission to use sensor was denied.");
+            }
+        }).catch(err => {
+                        console.log("Integration with Permissions API is not enabled, still try to start app.");
+                       initSensor();
+                  });
+       } else {
+           console.log( "No Permissions API, still try to start app.");
+           initSensor();
+}
+
 
 function handler(e) {
 	const rot = { a:e.alpha, b:e.beta, c:e.gamma, f:e.absolute };
@@ -139,7 +240,7 @@ class Physics {
 
 			for( var i = 0; i < 2; i ++ )  {
                                 const cubeShape = new CANNON.Box(new CANNON.Vec3(0.005, 0.005, 0.005))
-                                const cubeBody = new CANNON.Body({ mass: 0.1 })
+                                const cubeBody = new CANNON.Body({ mass: 0.01 })
                                 cubeBody.addShape(cubeShape)
                                 cubeBody.position.set(0, 0.01*(5 + i*2), -0.0625)
 				
@@ -169,7 +270,24 @@ class Viewer {
 
 	was = 0;
         self = null;
-        notself = null;
+        notself_shape = null;
+        notself = new THREE.Object3D();
+
+
+        direction_shape = null;
+        direction = new THREE.Object3D();
+
+
+        rotation_shape = null;
+        rotation = new THREE.Object3D();
+
+        right_shape = null;
+        right = new THREE.Object3D();
+        up_shape = null;
+        up = new THREE.Object3D();
+        forward_shape = null;
+        forward = new THREE.Object3D();
+
 
 	normTextures =  [];
         lnQ0 = null;
@@ -178,17 +296,17 @@ class Viewer {
 	constructor() {
 		this.initThree();
 
-		this.normTextures.push( loader.load( "images/normal.die.5.png") );
-		this.normTextures.push( loader.load( "images/normal.die.2.png") );
-		this.normTextures.push( loader.load( "images/normal.die.3.png") );
-		this.normTextures.push( loader.load( "images/normal.die.4.png") );
-		this.normTextures.push( loader.load( "images/normal.die.1.png") );
-		this.normTextures.push( loader.load( "images/normal.die.6.png") );
+		this.normTextures.push( loader.load( "images/normal.die.5.png") );  // east side (looks west)
+		this.normTextures.push( loader.load( "images/normal.die.2.png") );  // west side (looks east)
+		this.normTextures.push( loader.load( "images/normal.die.3.png") );  // NORTH   (looks south)
+		this.normTextures.push( loader.load( "images/normal.die.4.png") );   // SOUTH   (looks north)
+		this.normTextures.push( loader.load( "images/normal.die.1.png") );   // local UP   (looking down)
+		this.normTextures.push( loader.load( "images/normal.die.6.png") );   // local DOWN
 
 			for( var i = 0; i < 2; i ++ )  {
                                 
                                 // Cube
-                                const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 10, 10)
+                                const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
                                 //const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
 				const cubeMaterials = this.normTextures.map( tex=>new THREE.MeshPhongMaterial({ color: 0x999999, normalMap:tex }) );
@@ -201,10 +319,105 @@ class Viewer {
                                 this.scene.add(cubeMesh)
 			}
 
+
                         {
                                 
                                 // Cube
-                                const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 10, 10)
+                                const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
+                                //const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
+
+				const cubeMaterials = this.normTextures.map( tex=>new THREE.MeshPhongMaterial({ color: 0x990000, normalMap:tex }) );
+                                const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
+
+				//cubeMaterial.normalMap = this.normTextures[5];
+
+                                cubeMesh.castShadow = true
+                                this.rotation_shape = cubeMesh;
+                                this.rotation.add( cubeMesh );
+                                this.rotation.position.y = 0.02;
+                                this.scene.add(this.rotation);
+			}
+
+
+                        {
+                                
+                                // Cube
+                                const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
+                                //const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
+
+				const cubeMaterials = this.normTextures.map( tex=>new THREE.MeshPhongMaterial({ color: 0x009900, normalMap:tex }) );
+                                const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
+
+				//cubeMaterial.normalMap = this.normTextures[5];
+
+                                cubeMesh.castShadow = true
+                                this.right_shape = cubeMesh;
+                                this.right.add( cubeMesh );
+                                //this.right.position.y = 0.02;
+                                this.scene.add(this.right);
+			}
+
+                        {
+                                
+                                // Cube
+                                const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
+                                //const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
+
+				const cubeMaterials = this.normTextures.map( tex=>new THREE.MeshPhongMaterial({ color: 0x000099, normalMap:tex }) );
+                                const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
+
+				//cubeMaterial.normalMap = this.normTextures[5];
+
+                                cubeMesh.castShadow = true
+                                this.up_shape = cubeMesh;
+                                this.up.add( cubeMesh );
+                              //  this.up.position.y = 0.02;
+                                this.scene.add(this.up);
+			}
+
+                        {
+                                
+                                // Cube
+                                const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
+                                //const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
+
+				const cubeMaterials = this.normTextures.map( tex=>new THREE.MeshPhongMaterial({ color: 0x990000, normalMap:tex }) );
+                                const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
+
+				//cubeMaterial.normalMap = this.normTextures[5];
+
+                                cubeMesh.castShadow = true
+                                this.forward_shape = cubeMesh;
+                                this.forward.add( cubeMesh );
+                               // this.forward.position.y = 0.02;
+                                this.scene.add(this.forward);
+			}
+
+
+                        {
+                                
+                                // Cube
+                                const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01*25, 1, 1)
+                                //const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
+
+				const cubeMaterials = this.normTextures.map( tex=>new THREE.MeshPhongMaterial({ color: 0x009900, normalMap:tex }) );
+                                const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
+
+				//cubeMaterial.normalMap = this.normTextures[5];
+
+                                cubeMesh.castShadow = true
+                                this.direction_shape = cubeMesh;
+                                this.direction.add( cubeMesh );
+                                this.direction.position.y = 0.02;
+                                this.scene.add(this.direction);
+			}
+
+
+
+                        {
+                                
+                                // Cube
+                                const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
                                 //const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
 				const cubeMaterials = this.normTextures.map( tex=>new THREE.MeshPhongMaterial({ color: 0x999999, normalMap:tex }) );
@@ -213,15 +426,16 @@ class Viewer {
 				//cubeMaterial.normalMap = this.normTextures[5];
 
                                 cubeMesh.castShadow = true
-                                cubeMesh.position.y = 0.02;
-                                this.notself = cubeMesh;
-                                this.scene.add(cubeMesh)
+                                this.notself_shape = cubeMesh;
+                                this.notself.add( cubeMesh );
+                                this.notself.position.y = 0.02;
+                                this.scene.add(this.notself);
 			}
 
                         {
                                 
                                 // Cube
-                                const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 10, 10)
+                                const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
                                 //const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
 				const cubeMaterials = this.normTextures.map( tex=>new THREE.MeshPhongMaterial({ color: 0x999999, normalMap:tex }) );
@@ -347,7 +561,7 @@ class Viewer {
                                 console.log( "ABSOLUTE" );
                 }
                 //else console.log( "NOT SBSOLUTA")
-		
+		/*
                 this.lnQ.set( 0, 0, 0, 0 ).update();
                 // my useful Y is actually my Z as I look at it.
                 this.lnQ.freeSpin(-this.physics.worldOrientation.a*Math.PI/180, {x:0, y:0, z:1} ).update();
@@ -357,6 +571,7 @@ class Viewer {
                         if( "f" in this.physics.worldOrientation ) {
                                  this.lnQ0 = new lnQuat( this.lnQ );
                         }
+                */
 /*
                 this.lnQ.set( 0, this.physics.worldOrientation.b*Math.PI/180
                 , this.physics.worldOrientation.a*Math.PI/180
@@ -366,61 +581,31 @@ class Viewer {
                  //             if( this.lnQ0 )
                 //this.lnQ.freeSpin( this.lnQ0.θ, this.lnQ0 );
 
-                this.lnQ.update().exp( this.self.quaternion );
+                lnQWorld.update().exp( this.self.quaternion );
+                        
+                const up = lnQWorld.forward();
+                const right = lnQWorld.right();
+                const forward = lnQWorld.up();
+
+                      //this.rotation.position.set( lnQWorld.x*0.01, 0.08+lnQWorld.y*0.01, lnQWorld.z*0.01 );
+                      //this.rotation.position.set( 3*up.x*0.01, 0.08+3*up.y*0.01, 3*up.z*0.01 );
+                      this.right.position.set( 3*right.x*0.01, 0.08+3*right.y*0.01, 3*right.z*0.01 );
+                      this.up.position.set( 3*up.x*0.01, 0.08+3*up.y*0.01, 3*up.z*0.01 );
+                      this.forward.position.set( 3*forward.x*0.01, 0.08+3*forward.y*0.01, 3*forward.z*0.01 );
 
  
-                function getQuaternion( alpha, beta, gamma, target, target2 ) {
-                        https://w3c.github.io/deviceorientation/spec-source-orientation.html#worked-example
-  var _x = beta  ; // beta value
-  var _y = gamma ; // gamma value
-  var _z = alpha ; // alpha value
-
-  var cX = Math.cos( _x/2 );
-  var cY = Math.cos( _y/2 );
-  var cZ = Math.cos( _z/2 );
-  var sX = Math.sin( _x/2 );
-  var sY = Math.sin( _y/2 );
-  var sZ = Math.sin( _z/2 );
-
-  //
-  // ZXY quaternion construction.
-  //
-
-  var w = cX * cY * cZ - sX * sY * sZ;
-  var x = sX * cY * cZ - cX * sY * sZ;
-  var y = cX * sY * cZ + sX * cY * sZ;
-  var z = cX * cY * sZ + sX * sY * cZ;
-
-
-  
-  target.w = w;
-  target.x = x;
-  target.y = y;
-  target.z= z;
-  lnQuat.quatToLogQuat( target, target2 )
-  //return [ w, x, y, z ];
-
-}
-                /*
-                this.lnQ.x= -this.lnQ.x;
-                this.lnQ.y= -this.lnQ.y;
-                this.lnQ.z= -this.lnQ.z;
-                this.lnQ.dirty = true;
-                */
-             /*   
-                this.lnQ.set( 0, 0, 0, 0 ).update();
-                // my useful Y is actually my Z as I look at it.
-                this.lnQ.freeSpin(this.physics.worldOrientation.a*Math.PI/180, {x:0, y:0, z:1} ).update();
-                this.lnQ.freeSpin(this.physics.worldOrientation.b*Math.PI/180, {x:1, y:0, z:0} ).update();
-                this.lnQ.freeSpin(this.physics.worldOrientation.c*Math.PI/180, {x:0, y:1, z:0} ).update();
-                */
-                getQuaternion( alpha,beta,gamma,  this.notself.quaternion , this.lnQ );
+                //lnQWorld.update().exp( this.self.quaternion );
+ 
                 //this.lnQ.freeSpin( Math.PI/2, {x:1,y:1,z:0});
-                this.lnQ.update().exp( this.notself.quaternion );
+//                this.lnQ.update().exp( this.notself.quaternion );
+lnQTangPlane.exp( this.direction.quaternion );
+
+                lnQTangPlane.exp( this.notself_shape.quaternion );
+                lnQWorld.update().exp( this.notself.quaternion );
+
 //debugger;
-//                this.lnQ.freeSpin( Math.PI/2, {x:1,y:0,z:0 } );
-//                this.lnQ.freeSpin( Math.PI, {x:1,y:0,z:1 } );
-//                this.lnQ.update().exp( this.camera.quaternion );
+                //this.lnQ.freeSpin( Math.PI/2, {x:1,y:0,z:0 } );
+                //this.lnQ.update().exp( this.camera.quaternion );
 
 		const bodies = this.physics.dies;
 		const meshes = this.dies;

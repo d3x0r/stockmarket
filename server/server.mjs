@@ -8,10 +8,10 @@ process.chdir( "ui");
 //console.log( "Dir?", process.cwd );
 import {accept,connect} from "./game.mjs"
 
+const encMap = { '.gz':'gzip'
+};
 const extMap = { '.js': 'text/javascript'
               ,  '.mjs':'text/javascript'
-              , '.js.gz':'text/javascript'
-              , '.gz':'text/javascript'
               ,  '.css':'text/css'
               ,'.json':'application/json'
               ,'.png':'image/png'
@@ -45,13 +45,19 @@ export function openServer( opts, cb )
 		var filePath = "." + unescape(req.url);
 		if( req.url.startsWith( "/node_modules/" ) && ( req.url.startsWith( "/node_modules/@d3x0r" ) || req.url.startsWith( "/node_modules/jsox" ) ) )
 			filePath=".." + unescape(req.url);
-		var extname = path.extname(filePath);
+		let extname = path.extname(filePath);
+		let contentEncoding = encMap[extname];
+		if( contentEncoding ) {
+			extname = path.extname(path.basename(filePath,extname));
+		}
 		var contentType = extMap[extname] || "text/plain";
 
 		do {
 			//console.log( ":", extname, filePath )
 			if( disk.exists( filePath ) ) {
-				res.writeHead(200, { 'Content-Type': contentType });
+				const headers = { 'Content-Type': contentType };
+				if( contentEncoding ) headers['Content-Encoding']=contentEncoding;
+				res.writeHead(200, headers);
 				if( requests.length === 0 )
 					setTimeout( logRequests, 100 );
 				requests.push( req.url );

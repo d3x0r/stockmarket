@@ -1212,6 +1212,10 @@ lnQuat.prototype.spin = function(th,axis,oct){
 }
 
 lnQuat.prototype.freeSpin = function(th,axis,oct){
+	if( th instanceof lnQuat ){
+		return finishRodrigues( this, 0, th.nx, th.ny, th.nz, th.θ, axis );
+
+	}else {
 	const ax_ = axis.x;
 	const ay_ = axis.y;
 	const az_ = axis.z;
@@ -1223,6 +1227,7 @@ lnQuat.prototype.freeSpin = function(th,axis,oct){
 		const az = az_/aLen;
 
 		return finishRodrigues( this, oct||0, ax, ay, az, th );
+	}
 	}
 	return this;
 }
