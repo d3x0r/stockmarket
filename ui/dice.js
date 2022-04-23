@@ -1,8 +1,6 @@
 //import * as THREE from "./three.js/three.module.min.js.gz"
 import * as THREE from "./three.js/three.module.min.js"
-import {
-	lnQuat
-} from "./three.js/lnQuatSq.js"
+import { lnQuat } from "./three.js/lnQuatSq.js"
 //import * as CANNON from "./cannon-es/cannon-es.js.gz"
 import * as CANNON from "./cannon-es/cannon-es.js"
 
@@ -12,57 +10,50 @@ const compassCircle = document.querySelector(".compass-circle");
 const startBtn = document.querySelector(".start-btn");
 const myPoint = document.querySelector(".my-point");
 let compass;
-const isIOS = false
-/* !(
+const isIOS = false /* !(
   navigator.userAgent.match(/(iPod|iPhone|iPad)/) &&
   navigator.userAgent.match(/AppleWebKit/ && !navigator.userAgent.match(/Chrome/))
 )
 */
-;
+	;
 const lnQWorld = new lnQuat();
+const lnQWorldInv = new lnQuat();
 const lnQWorld2 = new lnQuat();
 const lnQTangPlane = new lnQuat();
+const lnQTangPlaneInv = new lnQuat();
+const lnQWorldTmp = new lnQuat();
+const lnQWorldTmp2 = new lnQuat();
 
 let logged = false;
 
+const state = {
+	dragging: false,
+	lnQCamOldDel: new lnQuat(),  // current difference (diff here and locked)
+	lnQCamBias: new lnQuat(), // starting orientation (locked)
+	lnQCamDel: new lnQuat(),  // current difference (diff here and locked)
+	lnQCamReal: new lnQuat(), // world and camDel
+	cameraPin: false,
+	x: 0,
+	y: 0,
+};
+let lat = 0;
+let lng = 0;
 
-const q2 = navigator.permissions.query({
-		name: 'geolocation'
-	})
+const q2 = navigator.permissions.query({ name: 'geolocation' })
 	.then(result => {
 		if (result.state === "denied") {
 			console.log("Cannot get location; absolute orientation unavailable.")
 		} else {
 
 			navigator.geolocation.getCurrentPosition(position => {
-				let {
-					latitude,
-					longitude
-				} = position.coords;
+				lat = position.coords.latitude;
+				lng = position.coords.longitude;
 				// Show a map centered at latitude / longitude.
 				//console.log( "LOCATION", latitude, longitude);
 				//latitude = latitude*-2;
-				if (latitude > 0) latitude += 90;
-				else latitude = 180 + latitude
-				lnQTangPlane.set({
-					lat: Math.PI * ((latitude)) / 180,
-					lng: Math.PI * (longitude) / 180
-				});
-
-				const tmp = lnQTangPlane.z;
-
-				lnQTangPlane.z = lnQTangPlane.y;
-				lnQTangPlane.y = -tmp; //lnQTangPlane.y;
-				//lnQTangPlane.x = lnQTangPlane.x;
-				//lnQTangPlane.y = tmp;
-
-				//lnQTangPlane.x = lnQTangPlane.z;
-				//lnQTangPlane.y = lnQTangPlane.x;
-				//lnQTangPlane.x = tmp;
-
-				lnQTangPlane.dirty = true;
-				lnQTangPlane.update();
-
+				//if( lat> 0 ) lat += 90;
+				//else lat = 180+lat
+				lnQTangPlane.set({ lat: Math.PI * ((lat)) / 180, lng: Math.PI * (lng) / 180 }).update();
 			});
 
 		}
@@ -73,7 +64,8 @@ const q2 = navigator.permissions.query({
 if (document.fullscreenEnabled && document.fullScreenElement) {
 
 	screen.orientation.lock("portrait")
-} else console.log("User must manually lock screen; or pick fullscreen element.");
+}
+else console.log("User must manually lock screen; or pick fullscreen element.");
 
 
 
@@ -81,13 +73,10 @@ window.addEventListener("deviceorientation", handler, true);
 window.addEventListener("devicemotion", handler2, true);
 
 
-const sensor = new AbsoluteOrientationSensor({
-	frequency: 60
-});
+const sensor = new AbsoluteOrientationSensor({ frequency: 60 });
 //const sensor2 = new RelativeOrientationSensor({frequency:1});
 //const mat4 = new Float32Array(16);
 let was = Date.now();
-
 function initSensor() {
 	sensor.onerror = event => console.log(event.error.name, event.error.message);
 	//sensor2.onerror = event => console.log(event.error.name, event.error.message);
@@ -95,35 +84,30 @@ function initSensor() {
 		//sensor.populateMatrix(mat4);
 		const q = sensor.quaternion;
 		//const lnQ = new lnQuat();
-		lnQuat.quatToLogQuat({
-			x: q[0],
-			y: q[1],
-			z: q[2],
-			w: q[3]
-		}, lnQWorld);
-		lnQWorld.x = -lnQWorld.x;
-		lnQWorld.y = -lnQWorld.y;
-		lnQWorld.z = -lnQWorld.z;
-		lnQWorld.dirty = true;
+		lnQuat.quatToLogQuat({ x: q[0], y: q[1], z: q[2], w: q[3] }, lnQWorld);
+		lnQWorldInv.x = -lnQWorld.x;
+		lnQWorldInv.y = -lnQWorld.y;
+		lnQWorldInv.z = -lnQWorld.z;
+		lnQWorldInv.dirty = true;
 
 		//lnQWorld2.set( lnQTangPlane ).freeSpin( lnQWorld );
-		lnQWorld2.set(lnQTangPlane).freeSpin(lnQWorld, true);
+		lnQWorld2.set(lnQTangPlane).freeSpin(lnQWorldInv, true);
 		//lnQWorld.freeSpin( lnQTangPlane , true);
 
 		//console.log( "A Sensor?", q, lnQWorld );
 		//sensor.stop();
 	};
 	/*
- sensor2.onreading = () => {
-        //sensor.populateMatrix(mat4);
-        const q =  sensor2.quaternion;
-        //const lnQ = new lnQuat();
-        lnQuat.quatToLogQuat( {x:q[0], y:q[1], z:q[2], w:q[3] }, lnQWorld2 );
-        console.log( "B Sensor?", Date.now() - was, q, lnQWorld2 );
-        //was = Date.now();
-      //  sensor.stop();
-      };
-*/
+	sensor2.onreading = () => {
+			 //sensor.populateMatrix(mat4);
+			 const q =  sensor2.quaternion;
+			 //const lnQ = new lnQuat();
+			 lnQuat.quatToLogQuat( {x:q[0], y:q[1], z:q[2], w:q[3] }, lnQWorld2 );
+			 console.log( "B Sensor?", Date.now() - was, q, lnQWorld2 );
+			 //was = Date.now();
+		  //  sensor.stop();
+		  };
+  */
 
 	sensor.start();
 	//sensor2.start();
@@ -133,19 +117,12 @@ function initSensor() {
 
 if (navigator.permissions) {
 	Promise.all(
-			[navigator.permissions.query({
-					name: "accelerometer"
-				}),
-				navigator.permissions.query({
-					name: "magnetometer"
-				}),
-				navigator.permissions.query({
-					name: "gyroscope"
-				})
-			])
+		[navigator.permissions.query({ name: "accelerometer" }),
+		navigator.permissions.query({ name: "magnetometer" }),
+		navigator.permissions.query({ name: "gyroscope" })])
 		.then(results => {
 			if (results.every(
-					result => result.state === "granted")) {
+				result => result.state === "granted")) {
 				initSensor();
 			} else {
 				console.log("Permission to use sensor was denied.");
@@ -161,12 +138,7 @@ if (navigator.permissions) {
 
 
 function handler(e) {
-	const rot = {
-		a: e.alpha,
-		b: e.beta,
-		c: e.gamma,
-		f: e.absolute
-	};
+	const rot = { a: e.alpha, b: e.beta, c: e.gamma, f: e.absolute };
 	if (logged < 3) {
 
 		console.log("First Rotation:", logged, rot);
@@ -218,38 +190,22 @@ class Physics {
 	world = new CANNON.World();
 
 	floorShape = new CANNON.Plane()
-	floorBody = new CANNON.Body({
-		mass: 0
-	});
+	floorBody = new CANNON.Body({ mass: 0 });
 
 	floorShape2 = new CANNON.Plane()
-	floorBody2 = new CANNON.Body({
-		mass: 0
-	});
+	floorBody2 = new CANNON.Body({ mass: 0 });
 	floorShape3 = new CANNON.Plane()
-	floorBody3 = new CANNON.Body({
-		mass: 0
-	});
+	floorBody3 = new CANNON.Body({ mass: 0 });
 	floorShape4 = new CANNON.Plane()
-	floorBody4 = new CANNON.Body({
-		mass: 0
-	});
+	floorBody4 = new CANNON.Body({ mass: 0 });
 	floorShape5 = new CANNON.Plane()
-	floorBody5 = new CANNON.Body({
-		mass: 0
-	});
+	floorBody5 = new CANNON.Body({ mass: 0 });
 	floorShape6 = new CANNON.Plane()
-	floorBody6 = new CANNON.Body({
-		mass: 0
-	});
+	floorBody6 = new CANNON.Body({ mass: 0 });
 
 	dies = [];
 	worldOrigin = new CANNON.Vec3();
-	worldOrientation = {
-		a: 0,
-		b: 0,
-		c: 0
-	};
+	worldOrientation = { a: 0, b: 0, c: 0 };
 	constructor() {
 		this.world.gravity.set(0, 0, 0);
 
@@ -286,9 +242,7 @@ class Physics {
 
 		for (var i = 0; i < 2; i++) {
 			const cubeShape = new CANNON.Box(new CANNON.Vec3(0.005, 0.005, 0.005))
-			const cubeBody = new CANNON.Body({
-				mass: 0.01
-			})
+			const cubeBody = new CANNON.Body({ mass: 0.01 })
 			cubeBody.addShape(cubeShape)
 			cubeBody.position.set(0, 0.01 * (5 + i * 2), -0.0625)
 
@@ -321,7 +275,6 @@ class Viewer {
 	notself_shape = null;
 	notself = new THREE.Object3D();
 
-
 	direction_shape = null;
 	direction = new THREE.Object3D();
 
@@ -341,15 +294,17 @@ class Viewer {
 	lnQ0 = null;
 	lnQ = new lnQuat();
 
+	tick = 0;
+
 	constructor() {
 		this.initThree();
 
-		this.normTextures.push(loader.load("images/normal.die.5.png")); // east side (looks west)
-		this.normTextures.push(loader.load("images/normal.die.2.png")); // west side (looks east)
-		this.normTextures.push(loader.load("images/normal.die.3.png")); // NORTH   (looks south)
-		this.normTextures.push(loader.load("images/normal.die.4.png")); // SOUTH   (looks north)
-		this.normTextures.push(loader.load("images/normal.die.1.png")); // local UP   (looking down)
-		this.normTextures.push(loader.load("images/normal.die.6.png")); // local DOWN
+		this.normTextures.push(loader.load("images/normal.die.5.png"));  // east side (looks west)
+		this.normTextures.push(loader.load("images/normal.die.2.png"));  // west side (looks east)
+		this.normTextures.push(loader.load("images/normal.die.3.png"));  // NORTH   (looks south)
+		this.normTextures.push(loader.load("images/normal.die.4.png"));   // SOUTH   (looks north)
+		this.normTextures.push(loader.load("images/normal.die.1.png"));   // local UP   (looking down)
+		this.normTextures.push(loader.load("images/normal.die.6.png"));   // local DOWN
 
 		for (var i = 0; i < 2; i++) {
 
@@ -357,10 +312,7 @@ class Viewer {
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({
-				color: 0x999999,
-				normalMap: tex
-			}));
+			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x999999, normalMap: tex }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -377,10 +329,7 @@ class Viewer {
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({
-				color: 0x990000,
-				normalMap: tex
-			}));
+			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x990000, normalMap: tex }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -388,7 +337,7 @@ class Viewer {
 			cubeMesh.castShadow = true
 			this.rotation_shape = cubeMesh;
 			this.rotation.add(cubeMesh);
-			this.rotation.position.y = 0.02;
+			this.rotation.position.x = 0.02;
 			this.scene.add(this.rotation);
 		}
 
@@ -399,10 +348,7 @@ class Viewer {
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({
-				color: 0x009900,
-				normalMap: tex
-			}));
+			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x009900, normalMap: tex }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -420,10 +366,7 @@ class Viewer {
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({
-				color: 0x000099,
-				normalMap: tex
-			}));
+			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x000099, normalMap: tex }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -441,10 +384,7 @@ class Viewer {
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({
-				color: 0x990000,
-				normalMap: tex
-			}));
+			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x990000, normalMap: tex }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -463,10 +403,7 @@ class Viewer {
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01 * 25, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({
-				color: 0x009900,
-				normalMap: tex
-			}));
+			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x009900, normalMap: tex }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -474,7 +411,7 @@ class Viewer {
 			cubeMesh.castShadow = true
 			this.direction_shape = cubeMesh;
 			this.direction.add(cubeMesh);
-			this.direction.position.y = 0.02;
+			this.direction.position.y = 0.005;
 			this.scene.add(this.direction);
 		}
 
@@ -486,10 +423,7 @@ class Viewer {
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({
-				color: 0x999999,
-				normalMap: tex
-			}));
+			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x999999, normalMap: tex }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -507,14 +441,11 @@ class Viewer {
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({
-				color: 0x999999,
-				normalMap: tex
-			}));
+			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x999999, normalMap: tex }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
-			cubeMesh.position.y = 0.08;
+			//cubeMesh.position.y = 0.08;
 
 			cubeMesh.castShadow = true
 			this.self = cubeMesh;
@@ -533,9 +464,7 @@ class Viewer {
 		scene.fog = new THREE.Fog(0x000000, 500, 1000)
 
 		// Renderer
-		const renderer = this.renderer = new THREE.WebGLRenderer({
-			antialias: true
-		})
+		const renderer = this.renderer = new THREE.WebGLRenderer({ antialias: true })
 		renderer.setSize(window.innerWidth, window.innerHeight)
 		renderer.setClearColor(scene.fog.color)
 
@@ -546,10 +475,46 @@ class Viewer {
 
 		{
 			const canvas = renderer.domElement;
-			canvas.addEventListener("touchstart", () => {
+			state.frame = canvas;
+			canvas.addEventListener("touchstart", (evt) => {
+				var pRect = state.frame.getBoundingClientRect();
+				//state.x = evt.clientX-pRect.left;
+				//state.y = evt.clientY-pRect.top;
+				state.x = evt.touches[0].clientX - pRect.left;
+				state.y = evt.touches[0].clientY - pRect.top;
 
-				console.log("Last rotation:", this.physics.worldOrientation);
-			})
+				// default this to reversing the current look.
+				state.lnQCamBias.set(state.lnQCamReal).conjugate().update();
+				state.lnQCamOldDel.set( state.lnQCamDel);
+
+				//console.log( "Setting:", ({x:state.lnQCamBias.x,y:state.lnQCamBias.y,z:state.lnQCamBias.z,θ:state.lnQCamBias.θ} ));
+				state.cameraPin = true;
+			}, { passive: true })
+			canvas.addEventListener("touchend", (evt) => {
+				//console.log("unpin camera");
+				//console.log( "Finally(last del):", ({x:state.lnQCamDel.x,y:state.lnQCamDel.y,z:state.lnQCamDel.z,θ:state.lnQCamDel.θ} ));
+				state.cameraPin = false;
+				//state.lnQCamDel.x = state.lnQCamDel.y = state.lnQCamDel.z = 0; state.lnQCamDel.dirty = true; state.lnQCamDel.update();
+			}, { passive: true });
+			canvas.addEventListener("touchmove", (evt) => {
+
+				/*
+	 if( state.cameraPin ) {
+				evt.preventDefault();
+				const points = evt.touches;
+				var pRect = state.frame.getBoundingClientRect();
+				var x = points[0].clientX - pRect.left;
+				var y = points[0].clientY - pRect.top;
+				state.frame.style.left =parseInt(state.frame.style.left) + (x-state.x);
+				state.frame.style.top= parseInt(state.frame.style.top) +(y-state.y);
+				if( state.frame.id ) {
+						  localStorage.setItem( state.frame.id + "/x", popup.divFrame.style.left );
+						  localStorage.setItem( state.frame.id + "/y", popup.divFrame.style.top );
+				}
+	 }
+	 */
+			}, { passive: true })
+
 
 		}
 
@@ -588,19 +553,15 @@ class Viewer {
 		// Floor
 		const floorGeometry = new THREE.PlaneBufferGeometry(100, 100, 1, 1)
 		floorGeometry.rotateX(-Math.PI / 2)
-		const floorMaterial = new THREE.MeshLambertMaterial({
-			color: 0x777777
-		})
+		const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x777777 })
 		const floor = new THREE.Mesh(floorGeometry, floorMaterial)
 		floor.receiveShadow = true
-		scene.add(floor)
+		//scene.add(floor)
 
 
 		// Click marker to be shown on interaction
 		const markerGeometry = new THREE.SphereBufferGeometry(0.2, 8, 8)
-		const markerMaterial = new THREE.MeshLambertMaterial({
-			color: 0xff0000
-		})
+		const markerMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 })
 		this.clickMarker = new THREE.Mesh(markerGeometry, markerMaterial)
 		this.clickMarker.visible = false // Hide it..
 		scene.add(this.clickMarker)
@@ -631,55 +592,88 @@ class Viewer {
 		//console.log( "tick?", delta );
 		this.physics.animate(delta);
 
-		const alpha = this.physics.worldOrientation.a * Math.PI / 180
-		const beta = this.physics.worldOrientation.b * Math.PI / 180
-		const gamma = this.physics.worldOrientation.c * Math.PI / 180
+		this.tick += delta;
 
-		if (this.physics.worldOrientation.f) {
-			console.log("ABSOLUTE");
+
+		// current planet bias
+		//const tod = ((360*Date.now()%(24*3600000))/(24*3600*1000));
+		//const tod =360* (((Date.now()%60000)/1000)/60) ;
+		const tod = 360 * ((Date.now() / 1000) % 60) / 60;
+		//lng = (30*this.tick)%360;//0* position.coords.longitude;
+		// Show a map centered at latitude / longitude.
+		//console.log( "LOCATION", latitude, longitude);
+		//latitude = latitude*-2;
+		lnQTangPlane.set({ lat: Math.PI * ((lat)) / 180, lng: Math.PI * (tod + lng) / 180 }).conjugate().update();
+
+		/*
+		const alpha = this.physics.worldOrientation.a*Math.PI/180
+		const beta = this.physics.worldOrientation.b*Math.PI/180
+		const gamma = this.physics.worldOrientation.c*Math.PI/180
+		this.lnQ.freeSpin(-this.physics.worldOrientation.a*Math.PI/180, {x:0, y:0, z:1} ).update();
+		this.lnQ.freeSpin(-this.physics.worldOrientation.b*Math.PI/180, {x:1, y:0, z:0} ).update();
+		this.lnQ.freeSpin(-this.physics.worldOrientation.c*Math.PI/180, {x:0, y:1, z:0} ).update();
+		*/
+
+
+		lnQWorld.update();
+		if (state.cameraPin) {
+			// compute delta, take world, reverse old world, and then inverse to remove from world 
+			// and end at state
+			state.lnQCamDel.set(lnQWorld).freeSpin(state.lnQCamBias, true).conjugate().update();
+			//console.log( "Computing  Del:", ({x:state.lnQCamDel.x,y:state.lnQCamDel.y,z:state.lnQCamDel.z,θ:state.lnQCamDel.θ} ));
 		}
-		//else console.log( "NOT SBSOLUTA")
-		/*
-                this.lnQ.set( 0, 0, 0, 0 ).update();
-                // my useful Y is actually my Z as I look at it.
-                this.lnQ.freeSpin(-this.physics.worldOrientation.a*Math.PI/180, {x:0, y:0, z:1} ).update();
-                this.lnQ.freeSpin(-this.physics.worldOrientation.b*Math.PI/180, {x:1, y:0, z:0} ).update();
-                this.lnQ.freeSpin(-this.physics.worldOrientation.c*Math.PI/180, {x:0, y:1, z:0} ).update();
-                if( !this.lnQ0)
-                        if( "f" in this.physics.worldOrientation ) {
-                                 this.lnQ0 = new lnQuat( this.lnQ );
-                        }
-                */
-		/*
-		                this.lnQ.set( 0, this.physics.worldOrientation.b*Math.PI/180
-		                , this.physics.worldOrientation.a*Math.PI/180
-		                , -this.physics.worldOrientation.c*Math.PI/180
-		                               )
-		                               */
-		//             if( this.lnQ0 )
-		//this.lnQ.freeSpin( this.lnQ0.θ, this.lnQ0 );
 
-		lnQWorld.update().exp(this.self.quaternion);
+		// the realCamera is the world removed by bias.
+		state.lnQCamReal.set(lnQWorld).freeSpin(state.lnQCamDel);
+  		//console.log( "World:", ({x:lnQWorld.x,y:lnQWorld.y,z:lnQWorld.z,θ:lnQWorld.θ} ));
+		//console.log( "currentCam:", ({x:state.lnQCamReal.x,y:state.lnQCamReal.y,z:state.lnQCamReal.z,θ:state.lnQCamReal.θ} ));
 
-		const up = lnQWorld.forward();
-		const right = lnQWorld.right();
-		const forward = lnQWorld.up();
+
+		// this follows along with the normal orientation...
+		const camup = state.lnQCamReal.forward();
+		this.camera.position.set(0.25 * camup.x, 0.25 * camup.y, 0.25 * camup.z);
+		state.lnQCamReal.exp(this.camera.quaternion);
+
+
+		const up = { x: 0, y: 0, z: 1 };//lnQWorld.forward();
+		const right = { x: 0, y: 1, z: 0 };//lnQWorld.up();
+		right.x = -right.x;
+		right.y = -right.y;
+		right.z = -right.z;
+		const forward = { x: 1, y: 0, z: 0 };//lnQWorld.right();
 
 		//this.rotation.position.set( lnQWorld.x*0.01, 0.08+lnQWorld.y*0.01, lnQWorld.z*0.01 );
 		//this.rotation.position.set( 3*up.x*0.01, 0.08+3*up.y*0.01, 3*up.z*0.01 );
-		this.right.position.set(3 * right.x * 0.01, 0.08 + 3 * right.y * 0.01, 3 * right.z * 0.01);
-		this.up.position.set(3 * up.x * 0.01, 0.08 + 3 * up.y * 0.01, 3 * up.z * 0.01);
-		this.forward.position.set(3 * forward.x * 0.01, 0.08 + 3 * forward.y * 0.01, 3 * forward.z * 0.01);
+		this.right.position.set(3 * right.x * 0.01, 3 * right.y * 0.01, 3 * right.z * 0.01);
+		this.up.position.set(3 * up.x * 0.01, 3 * up.y * 0.01, 3 * up.z * 0.01);
+		this.forward.position.set(3 * forward.x * 0.01, 3 * forward.y * 0.01, 3 * forward.z * 0.01);
 
 
 		//lnQWorld.update().exp( this.self.quaternion );
+		//lnQWorldTmp.set(lnQTangPlane ).freeSpin( lnQWorldInv);//.freeSpin( lnQWorld);
 
 		//this.lnQ.freeSpin( Math.PI/2, {x:1,y:1,z:0});
 		//                this.lnQ.update().exp( this.notself.quaternion );
 		lnQTangPlane.exp(this.direction.quaternion);
+		//lnQWorld.exp( this.direction.quaternion );
 
-		lnQTangPlane.exp(this.notself_shape.quaternion);
+		lnQWorldTmp2.set(lnQWorld.update()).freeSpin(lnQTangPlane.update(), true);//.freeSpin( lnQWorld, true );
+
+
+
+		lnQWorldTmp.set(0, -(lat + 90) * Math.PI / 180, 90 * Math.PI / 180, (lat) * Math.PI / 180).update();
+
+		//lnQWorldTmp2.set( lnQTangPlane ).spin( lnQWorld.θ, lnQWorld );//.freeSpin( lnQWorld);//.freeSpin(lnQTangPlane, false);//.freeSpin( lnQWorld, true );
+		//lnQWorldTmp2.set( lnQWorldInv.update() ).spin(lnQTangPlane.θ, lnQTangPlane);//.freeSpin( lnQWorld, false );
+
+		//lnQTangPlane.exp( this.notself_shape.quaternion );
 		lnQWorld.update().exp(this.notself.quaternion);
+
+		// this is relative to tangent, and is additional world translation.... 
+		// this is the phone in the local up, where up is defined by lat/long position (and north)
+		lnQWorldTmp2.set(lnQWorld.update()).freeSpin(lnQTangPlane);//.freeSpin( lnQWorld, false );
+		lnQWorldTmp2.update().exp(this.rotation.quaternion);
+
 
 		//debugger;
 		//this.lnQ.freeSpin( Math.PI/2, {x:1,y:0,z:0 } );

@@ -225,11 +225,22 @@ lnQuat.prototype.set = function(theta,d,a,b,e)
 					let lat = theta.lat;// % (Math.PI*4);
 					let lng = theta.lng;// % (Math.PI*4)
 					
+						/*
 					if( !lat ) {
-						this.x = 0; this.z = 0; this.y = lng+twistDelta;
+						
+						this.x = 0; this.y = Math.PI/2; this.z = 0;//lng+twistDelta;
 						this.dirty = true; 
-						return this.update();
+						return this.update().freeSpin( lng+twistDelta, {x:0,y:0,z:1});//.freeSpin( Math.PI/2, {x:1,y:0,z:0});//.update();
 					}
+					*/
+					this.set(0,0,0,0).update();
+					this.pitch( Math.PI/2-lat );
+					return this.freeSpin( lng+twistDelta, {x:0,y:0,z:1});
+					this.x = 0; this.y = Math.PI/2+lat; this.z = 0;//lng+twistDelta;
+					this.dirty = true; 
+					return this.update().freeSpin( lng+twistDelta, {x:0,y:0,z:1});//.freeSpin( Math.PI/2, {x:1,y:0,z:0});//.update();
+
+
 
 					const gridlat = Math.floor( Math.abs( lat ) / Math.PI );
 					const gridlng = Math.floor( Math.abs( lng ) / Math.PI );
@@ -241,7 +252,7 @@ lnQuat.prototype.set = function(theta,d,a,b,e)
 					const x = Math.sin(lng);
 					const z = Math.cos(lng);
 					this.θ = (latmul*lat+spin);
-					this.x = (this.nx =x) * (this.θ); this.y = (this.ny =0); this.z = (this.nz =z) * (this.θ);
+					this.x = (this.nx =x) * (this.θ); this.z = (this.nz =0); this.x = (this.nx =z) * (this.θ);
 					this.dirty = false;
 					if(d) // D is a boolean to further align the tangents.
 					{
@@ -266,8 +277,8 @@ lnQuat.prototype.set = function(theta,d,a,b,e)
 							if( Math.abs(newlen)>0.00000001){
 								const tmp = 1 /newlen;
 								q.nx = yz *tmp;
-								q.ny = xz *tmp;
-								q.nz = xy *tmp;
+								q.nz = xz *tmp;
+								q.ny = xy *tmp;
 							}else{
 								q.nx = 0;
 								q.ny = 1;
@@ -285,9 +296,9 @@ lnQuat.prototype.set = function(theta,d,a,b,e)
 								const c = 1-c1;
 								const cny = c * this.ny;
 								// compute the 'up' for the current frame
-								const ax = (cny*this.nx) - s*this.nz;
-								const ay = (cny*this.ny) + c1;
-								const az = (cny*this.nz) + s*this.nx;
+								const ay = (cny*this.nx) - s*this.nz;
+								const az = (cny*this.ny) + c1;
+								const ax = (cny*this.nz) + s*this.nx;
 
 								const AdotB = q.ny;
 
@@ -1153,7 +1164,7 @@ function finishRodrigues( q, oct, ax, ay, az, th, extrinsic ) {
 		if( AdotB > 0 ) {
 			q.θ  = q.θ+th;
 		}else {
-			q.θ  = q.θ+th;
+			q.θ  = q.θ-th;
 		}
 		q.x = (q.nx) * q.θ;
 		q.y = (q.ny) * q.θ;
@@ -1167,7 +1178,7 @@ function finishRodrigues( q, oct, ax, ay, az, th, extrinsic ) {
 lnQuat.prototype.spin = function(th,axis,oct){
 	// input angle...
 
-
+/*
 	if( "undefined" === typeof oct ) oct = 0;
 	if( this.dirty ) this.update();
 
@@ -1183,7 +1194,9 @@ lnQuat.prototype.spin = function(th,axis,oct){
 
 		return finishRodrigues( this, oct||0, ax, ay, az, th, true );
 	}
-	return this;    {
+	return this;   
+	*/
+	 {
 	// ax, ay, az could be given; these are computed as the source quaternion normal
 	const aLen = Math.sqrt(axis.x*axis.x + axis.y*axis.y + axis.z*axis.z);
 	const ax_ = axis.x/aLen;
@@ -1499,6 +1512,14 @@ lnQuat.prototype.addConj = function( q ) {
 	return this;//.update();
 }
 
+lnQuat.prototype.conjugate = function(  ) {
+	//this.w += q.w;
+	this.x = -this.x;
+	this.y = -this.y;
+	this.z = -this.z;
+	this.dirty = true;
+	return this;//.update();
+}
 
 function deg2rad(n) { return n * Math.PI/180 }
 
