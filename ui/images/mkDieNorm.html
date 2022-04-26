@@ -7,38 +7,43 @@ background:#777	;
 
 
 <script>
-const canvas = document.getElementById( "canvas");
-const squareSize= canvas.width = 128;
+const squareSize= 128;
+const pipSize = 30;
 
-canvas.height = 128;
+for( let i = 0; i < 6; i++ ) {
+const canvas = document.createElement( "canvas");
+canvas.width = squareSize;
+document.body.appendChild( canvas );
+canvas.height = squareSize;
 canvas.style.width = "100%";
 
 const ctx = canvas.getContext("2d" );
 
+const canvas2 = document.createElement( "canvas");
+canvas2.width = squareSize;
+document.body.appendChild( canvas2 );
+canvas2.height = squareSize;
+canvas2.style.width = "100%";
 
+const ctx2 = canvas2.getContext("2d" );
 
+drawOne( ctx, ctx2, i+1 );
+}
 
+function drawOne( ctx, ctx2, mode ) {
 
 	ctx.clearRect(0,0,squareSize,squareSize );
-	var _output = ctx.getImageData(0, 0, squareSize, squareSize );
-	var output = _output.data;
+	const _output = ctx.getImageData(0, 0, squareSize, squareSize );
+	const output = _output.data;
+
+	ctx2.clearRect(0,0,squareSize,squareSize );
+	const _output2 = ctx2.getImageData(0, 0, squareSize, squareSize );
+	const output2 = _output2.data;
 
 
-	function plot( x_, y_, c ) {
-		if( x_ < minScale || y_ < minScale ) return
-		if( x_ > maxScale || y_ > maxScale ) return
-		const x = unit(x_);
-		const y = unit(-y_);
-		output[((x+y*squareSize)<<2)+0] = c[0];
-		output[((x+y*squareSize)<<2)+1] = c[1];
-		output[((x+y*squareSize)<<2)+2] = c[2];
-		output[((x+y*squareSize)<<2)+3] = c[3];
-	}
+	const c = [0,0,0];
 
-
-		const c = [0,0,0];
-
-const mode = 1;
+//const mode = 1;
 
        // this is the outside endge;
 for( let x = 0; x < 128; x++ ) {
@@ -48,12 +53,12 @@ for( let x = 0; x < 128; x++ ) {
 	let ry = (64-y)/64;
 
 		if( rx > -0.9 ) 
-			if( rx > 0.9 ) rx=(rx-0.9)*10; else rx = 0;
+			if( rx > 0.9 ) rx=(rx-0.9)*5; else rx = 0;
 		else
-			rx = (rx+0.9)*10;
-		if( ry > -0.9 ) if( ry > 0.9 ) ry = (ry-0.9)*10; else ry = 0;
+			rx = (rx+0.9)*5;
+		if( ry > -0.9 ) if( ry > 0.9 ) ry = (ry-0.9)*5; else ry = 0;
 		else
-			ry = (ry+0.9)*10;
+			ry = (ry+0.9)*5;
 
 
 
@@ -71,6 +76,17 @@ for( let x = 0; x < 128; x++ ) {
 		output[(x+y*128)*4+3] = 255;
 	}
 }
+
+for( let x = 0; x < 128; x++ ) {
+	for( let y = 0; y < 128; y++ ) {
+
+		output2[(x+y*128)*4+0] = 255;
+		output2[(x+y*128)*4+1] = 255;
+		output2[(x+y*128)*4+2] = 255;
+		output2[(x+y*128)*4+3] = 255;
+	}
+}
+
 
 	const faces = [  { o1: [64-16],
 				o2 : [64-16]},
@@ -96,11 +112,11 @@ for( let x = 0; x < 128; x++ ) {
 	
 		const ofsx = o1[p];
 		const ofsy = o2[p];
-		for( let x = 0; x < 32; x++ ) {
-			for( let y = 0; y < 32; y++ ) {				
+		for( let x = 0; x < pipSize; x++ ) {
+			for( let y = 0; y < pipSize; y++ ) {				
 	                
-			let rx = (x-16)/16;
-			let ry = (16-y)/16;
+			let rx = (x-pipSize/2)/(pipSize/2);
+			let ry = (pipSize/2-y)/(pipSize/2);
 	                
                 
 	                
@@ -124,11 +140,32 @@ for( let x = 0; x < 128; x++ ) {
 			}
 		}
 
-}
+
+		for( let x = 0; x < pipSize; x++ ) {
+			for( let y = 0; y < pipSize; y++ ) {				
+	                
+			let rx = (x-pipSize/2)/(pipSize/2);
+			let ry = (pipSize/2-y)/(pipSize/2);
+	                
+				const zfix = 1-(rx*rx+ry*ry);
+				if( zfix >= 0 ) {
+				output2[((ofsx+x)+(y+ofsy)*128)*4+0] = 32;
+				output2[((ofsx+x)+(y+ofsy)*128)*4+1] = 32;
+				output2[((ofsx+x)+(y+ofsy)*128)*4+2] = 32;
+				output2[((ofsx+x)+(y+ofsy)*128)*4+3] = 255;
+					}else {
+					}
+			}
+		}
+
+
+	}
 
 
 	ctx.putImageData(_output, 0,0);
+	ctx2.putImageData(_output2, 0,0);
 
+}
 
 
 </script>
