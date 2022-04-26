@@ -1,5 +1,6 @@
 //import * as THREE from "./three.js/three.module.min.js.gz"
 import * as THREE from "./three.js/three.module.min.js"
+import {NaturalCamera} from "./three.js/NaturalCamera.js"
 import { lnQuat } from "./three.js/lnQuatSq.js"
 //import * as CANNON from "./cannon-es/cannon-es.js.gz"
 import * as CANNON from "./cannon-es/cannon-es.js"
@@ -27,12 +28,16 @@ const lnQWorldTmp2 = new lnQuat();
 let logged = false;
 
 const state = {
+	useMouse :false, // motion sensors not available.
 	dragging: false,
 	lnQCamOldDel: new lnQuat(),  // current difference (diff here and locked)
 	lnQCamBias: new lnQuat(), // starting orientation (locked)
 	lnQCamDel: new lnQuat(),  // current difference (diff here and locked)
 	lnQCamReal: new lnQuat(), // world and camDel
 	cameraPin: false,
+	cameraSpin: false,
+	cameraPinAt : new THREE.Vector3(0,0,0),
+	cameraAt : new THREE.Vector3(0,0,0),
 	x: 0,
 	y: 0,
 };
@@ -76,7 +81,10 @@ const sensor = new AbsoluteOrientationSensor({ frequency: 60 });
 //const mat4 = new Float32Array(16);
 let was = Date.now();
 function initSensor() {
-	sensor.onerror = event => console.log(event.error.name, event.error.message);
+	sensor.onerror = event => {
+		console.log(event.error.name, event.error.message);
+		state.useMouse = true;
+	}
 	//sensor2.onerror = event => console.log(event.error.name, event.error.message);
 	sensor.onreading = () => {
 		//sensor.populateMatrix(mat4);
@@ -325,6 +333,38 @@ window.addEventListener("devicemotion", handler2, true);
 
 
 
+
+		for (var i = 0; i < 100; i++) {
+
+			const G = 4;
+const iscal = 0.1;
+			// Cube
+			const y = i*iscal-Math.sqrt(G)*Math.atan((i*iscal+1)/Math.sqrt(G))+Math.sqrt(G)*Math.atan(1/Math.sqrt(G));
+
+			const z2 = G/((i*iscal+1)*(i*iscal+1)) +0.2;
+			const z = G/((i*iscal+1)) +0.2;
+
+			const cubeGeometry = new THREE.TorusGeometry(0.1*z, 0.004, 12, 24)
+
+			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
+
+			const cubeMaterials = new THREE.MeshPhongMaterial({ color: 0x999999 });
+			const ringMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
+ringMesh.quaternion.set(  Math.sin(Math.PI/4), 0,0,Math.cos( Math.PI/4) );
+//	ringMesh.position.x = -0.01*i;
+	ringMesh.position.x = 0.1;
+	ringMesh.position.y = y*0.01/iscal;
+	ringMesh.position.z = -1.5;
+	ringMesh.position.z = -1.5 - y*0.01;
+			//cubeMaterial.normalMap = this.normTextures[5];
+
+			//cubeMesh.castShadow = true
+
+			this.scene.add(ringMesh)
+		}
+
+
+
 		for (var i = 0; i < 2; i++) {
 
 			// Cube
@@ -506,13 +546,23 @@ ringMesh.quaternion.set(  Math.sin(Math.PI/4), 0,0,Math.cos( Math.PI/4) );
 
 	initThree() {
 		// Camera
+		const camTripod = new THREE.Object3D();
 		const camera = this.camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.0005, 100)
 		camera.position.set(0, 0.08, 0.3)
+
+		//camTripod.add( camera );
 
 		// Scene
 		const scene = this.scene = new THREE.Scene()
 		scene.fog = new THREE.Fog(0x000000, 500, 1000)
 
+		const parent = document.createElement( "div" );
+		parent.style.width = "100vw";
+		parent.style.height="100vh";
+		parent.style.position="absolute";
+
+		
+		document.body.appendChild(parent );
 		// Renderer
 		const renderer = this.renderer = new THREE.WebGLRenderer({ antialias: true })
 		renderer.setSize(window.innerWidth, window.innerHeight)
@@ -523,10 +573,21 @@ ringMesh.quaternion.set(  Math.sin(Math.PI/4), 0,0,Math.cos( Math.PI/4) );
 		renderer.shadowMap.enabled = true
 		renderer.shadowMap.type = THREE.PCFSoftShadowMap
 
+		this.controls = new NaturalCamera( camera, parent )
+		this.controls.enable();
+
 		{
 			const canvas = renderer.domElement;
+			//makeControls( canvas );
+			parent.appendChild( canvas );
+			const c = makeControls( parent );
+			canvas.style.position = "absolute";
 			state.frame = canvas;
-			canvas.addEventListener("touchstart", (evt) => {
+			//c. canvas.addEventListener("touchstart",touchStart );
+			c.camPin.addEventListener("touchstart", touchStart, { passive: true })
+			c.camSpin.addEventListener("touchstart", touchStart2, { passive: true })
+
+			function touchStart (evt)  {
 				var pRect = state.frame.getBoundingClientRect();
 				//state.x = evt.clientX-pRect.left;
 				//state.y = evt.clientY-pRect.top;
@@ -539,14 +600,38 @@ ringMesh.quaternion.set(  Math.sin(Math.PI/4), 0,0,Math.cos( Math.PI/4) );
 
 				//console.log( "Setting:", ({x:state.lnQCamBias.x,y:state.lnQCamBias.y,z:state.lnQCamBias.z,θ:state.lnQCamBias.θ} ));
 				state.cameraPin = true;
-			}, { passive: true })
-			canvas.addEventListener("touchend", (evt) => {
+			}
+			function touchStart2(evt)  {
+				var pRect = state.frame.getBoundingClientRect();
+				//state.x = evt.clientX-pRect.left;
+				//state.y = evt.clientY-pRect.top;
+				state.x = evt.touches[0].clientX - pRect.left;
+				state.y = evt.touches[0].clientY - pRect.top;
+
+				// default this to reversing the current look.
+				state.lnQCamBias.set(state.lnQCamReal).conjugate().update();
+				state.lnQCamOldDel.set( state.lnQCamDel);
+				state.cameraPinAt.copy( camera.position );
+				//console.log( "Setting:", ({x:state.lnQCamBias.x,y:state.lnQCamBias.y,z:state.lnQCamBias.z,θ:state.lnQCamBias.θ} ));
+				state.cameraSpin = true;
+			}
+			c.camPin.addEventListener("touchend", (evt) => {
 				//console.log("unpin camera");
 				//console.log( "Finally(last del):", ({x:state.lnQCamDel.x,y:state.lnQCamDel.y,z:state.lnQCamDel.z,θ:state.lnQCamDel.θ} ));
 				state.cameraPin = false;
 				//state.lnQCamDel.x = state.lnQCamDel.y = state.lnQCamDel.z = 0; state.lnQCamDel.dirty = true; state.lnQCamDel.update();
 			}, { passive: true });
-			canvas.addEventListener("touchmove", (evt) => {
+			c.camSpin.addEventListener("touchend", (evt) => {
+				//console.log("unpin camera");
+				//console.log( "Finally(last del):", ({x:state.lnQCamDel.x,y:state.lnQCamDel.y,z:state.lnQCamDel.z,θ:state.lnQCamDel.θ} ));
+				state.cameraSpin = false;
+				const forward = state.lnQCamReal.forward();
+				state.cameraAt.x = camera.position.x - 0.25* forward.x;
+				state.cameraAt.y = camera.position.y -0.25* forward.y;
+				state.cameraAt.z = camera.position.z-0.25* forward.z;
+				//state.lnQCamDel.x = state.lnQCamDel.y = state.lnQCamDel.z = 0; state.lnQCamDel.dirty = true; state.lnQCamDel.update();
+			}, { passive: true });
+			c.camPin.addEventListener("touchmove", (evt) => {
 
 				/*
 	 if( state.cameraPin ) {
@@ -566,6 +651,44 @@ ringMesh.quaternion.set(  Math.sin(Math.PI/4), 0,0,Math.cos( Math.PI/4) );
 			}, { passive: true })
 
 
+		}
+
+		function makeControls(parent ) {
+
+			const ControlBox = document.createElement( "div" );
+			ControlBox.style.position="relative";
+			ControlBox.style.top = 0;
+			ControlBox.style.left = "0";
+			ControlBox.style.width = "100%";
+			ControlBox.style.height = "100%";
+			ControlBox.textContent = "";
+			ControlBox.style.zIndex = 1;
+
+			parent.appendChild( ControlBox );
+
+			const camPin = document.createElement( "div" );
+			camPin.style.position="relative";
+			camPin.style.top = 0;
+			camPin.style.left = "80%";
+			camPin.style.width = "20%";
+			camPin.style.height = "20%";
+			camPin.textContent = "Pin";
+			camPin.style.color = "white";
+
+			ControlBox.appendChild( camPin );
+
+			const camSpin = document.createElement( "div" );
+			camSpin.style.position="relative";
+			camSpin.style.top = "20%";
+			camSpin.style.left = "80%";
+			camSpin.style.width = "20%";
+			camSpin.style.height = "20%";
+			camSpin.textContent = "SPIN";
+			camSpin.style.color = "white";
+
+			ControlBox.appendChild( camSpin );
+
+			return {camPin, camSpin}
 		}
 
 		document.body.appendChild(renderer.domElement)
@@ -641,7 +764,6 @@ ringMesh.quaternion.set(  Math.sin(Math.PI/4), 0,0,Math.cos( Math.PI/4) );
 		}
 		//console.log( "tick?", delta );
 		this.physics.animate(delta);
-
 		this.tick += delta;
 
 
@@ -672,6 +794,12 @@ ringMesh.quaternion.set(  Math.sin(Math.PI/4), 0,0,Math.cos( Math.PI/4) );
 			state.lnQCamDel.set(lnQWorld).freeSpin(state.lnQCamBias, true).conjugate().update();
 			//console.log( "Computing  Del:", ({x:state.lnQCamDel.x,y:state.lnQCamDel.y,z:state.lnQCamDel.z,θ:state.lnQCamDel.θ} ));
 		}
+		if (state.cameraSpin) {
+			// compute delta, take world, reverse old world, and then inverse to remove from world 
+			// and end at state
+			//state.lnQCamDel.set(lnQWorld).freeSpin(state.lnQCamBias, true).conjugate().update();
+			//console.log( "Computing  Del:", ({x:state.lnQCamDel.x,y:state.lnQCamDel.y,z:state.lnQCamDel.z,θ:state.lnQCamDel.θ} ));
+		}
 
 		// the realCamera is the world removed by bias.
 		state.lnQCamReal.set(lnQWorld).freeSpin(state.lnQCamDel);
@@ -679,11 +807,23 @@ ringMesh.quaternion.set(  Math.sin(Math.PI/4), 0,0,Math.cos( Math.PI/4) );
 		//console.log( "currentCam:", ({x:state.lnQCamReal.x,y:state.lnQCamReal.y,z:state.lnQCamReal.z,θ:state.lnQCamReal.θ} ));
 
 
+		if(state.useMouse) 
+			this.controls.update(delta);
+			else {
+				
 		// this follows along with the normal orientation...
 		const camup = state.lnQCamReal.forward();
-		this.camera.position.set(0.25 * camup.x, 0.25 * camup.y, 0.25 * camup.z);
+		if( state.cameraSpin ) {
+			// don't change the camera position.
+			;
+		}else
+			this.camera.position.set( state.cameraAt.x+ 0.25 * camup.x,state.cameraAt.y+ 0.25 * camup.y, state.cameraAt.z+0.25 * camup.z);
 		state.lnQCamReal.exp(this.camera.quaternion);
 
+				
+			}
+		
+//console.log( "camera quat:", this.camera.quaternion )
 
 		const up = { x: 0, y: 0, z: 1 };//lnQWorld.forward();
 		const right = { x: 0, y: 1, z: 0 };//lnQWorld.up();
