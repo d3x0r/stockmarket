@@ -69,8 +69,6 @@ else console.log("User must manually lock screen; or pick fullscreen element.");
 
 
 
-window.addEventListener("deviceorientation", handler, true);
-window.addEventListener("devicemotion", handler2, true);
 
 
 const sensor = new AbsoluteOrientationSensor({ frequency: 60 });
@@ -174,6 +172,7 @@ function handler2(e) {
 	const accelg = e.accelerationIncludingGravity;
 	const rotate = e.rotationRate;
 
+	if( !view ) 
 	view.physics.world.gravity.set(-accelg.x, -accelg.y, -accelg.z);
 
 	// z + is gravity down. face up
@@ -290,13 +289,18 @@ class Viewer {
 	forward = new THREE.Object3D();
 
 
-	normTextures = [];
+	normTextures = [];diffuseTextures=[];specTextures=[];
 	lnQ0 = null;
 	lnQ = new lnQuat();
 
 	tick = 0;
 
 	constructor() {
+
+window.addEventListener("deviceorientation", handler, true);
+window.addEventListener("devicemotion", handler2, true);
+
+
 		this.initThree();
 
 		this.normTextures.push(loader.load("images/normal.die.5.png"));  // east side (looks west)
@@ -305,6 +309,21 @@ class Viewer {
 		this.normTextures.push(loader.load("images/normal.die.4.png"));   // SOUTH   (looks north)
 		this.normTextures.push(loader.load("images/normal.die.1.png"));   // local UP   (looking down)
 		this.normTextures.push(loader.load("images/normal.die.6.png"));   // local DOWN
+		this.diffuseTextures.push(loader.load("images/diffuse.die.5.png"));  // east side (looks west)
+		this.diffuseTextures.push(loader.load("images/diffuse.die.2.png"));  // west side (looks east)
+		this.diffuseTextures.push(loader.load("images/diffuse.die.3.png"));  // NORTH   (looks south)
+		this.diffuseTextures.push(loader.load("images/diffuse.die.4.png"));   // SOUTH   (looks north)
+		this.diffuseTextures.push(loader.load("images/diffuse.die.1.png"));   // local UP   (looking down)
+		this.diffuseTextures.push(loader.load("images/diffuse.die.6.png"));   // local DOWN
+
+		this.specTextures.push(loader.load("images/spec.die.5.png"));  // east side (looks west)
+		this.specTextures.push(loader.load("images/spec.die.2.png"));  // west side (looks east)
+		this.specTextures.push(loader.load("images/spec.die.3.png"));  // NORTH   (looks south)
+		this.specTextures.push(loader.load("images/spec.die.4.png"));   // SOUTH   (looks north)
+		this.specTextures.push(loader.load("images/spec.die.1.png"));   // local UP   (looking down)
+		this.specTextures.push(loader.load("images/spec.die.6.png"));   // local DOWN
+
+
 
 		for (var i = 0; i < 2; i++) {
 
@@ -312,7 +331,7 @@ class Viewer {
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x999999, normalMap: tex }));
+			const cubeMaterials = this.normTextures.map((tex,i) => new THREE.MeshPhongMaterial({ color: 0x999999, normalMap: tex, map:this.diffuseTextures[i], specularMap:this.specTextures[i] }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -322,14 +341,44 @@ class Viewer {
 			this.scene.add(cubeMesh)
 		}
 
+/*
+		for (var i = 0; i < 40; i++) {
 
+			const G = 4;
+const iscal = 0.1;
+			// Cube
+			const y = i*iscal-Math.sqrt(G)*Math.atan((i*iscal+1)/Math.sqrt(G))+Math.sqrt(G)*Math.atan(1/Math.sqrt(G));
+
+			const z = G/((i*iscal+1)*(i*iscal+1)) +1;
+
+			const cubeGeometry = new THREE.TorusGeometry(0.1*z, 0.004, 12, 24)
+
+			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
+
+			const cubeMaterials = new THREE.MeshPhongMaterial({ color: 0x999999 });
+			const ringMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
+ringMesh.quaternion.set(  Math.sin(Math.PI/4), 0,0,Math.cos( Math.PI/4) );
+//	ringMesh.position.x = -0.01*i;
+	ringMesh.position.x = 0.1;
+	ringMesh.position.y = y*0.03/iscal;
+	ringMesh.position.z = -1.5;
+	ringMesh.position.z = -1.5 - y*0.01;
+			//cubeMaterial.normalMap = this.normTextures[5];
+
+			//cubeMesh.castShadow = true
+
+			this.scene.add(ringMesh)
+		}
+
+*/
 		{
 
 			// Cube
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x990000, normalMap: tex }));
+//			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x990000, normalMap: tex }));
+			const cubeMaterials = this.normTextures.map((tex,i) => new THREE.MeshPhongMaterial({ color: 0x990000, normalMap: tex, map:this.diffuseTextures[i], specularMap:this.specTextures[i] }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -348,7 +397,8 @@ class Viewer {
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x009900, normalMap: tex }));
+			//const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x009900, normalMap: tex }));
+			const cubeMaterials = this.normTextures.map((tex,i) => new THREE.MeshPhongMaterial({ color: 0x009900, normalMap: tex, map:this.diffuseTextures[i], specularMap:this.specTextures[i] }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -366,7 +416,7 @@ class Viewer {
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x000099, normalMap: tex }));
+			const cubeMaterials = this.normTextures.map((tex,i) => new THREE.MeshPhongMaterial({ color: 0x000099, normalMap: tex, map:this.diffuseTextures[i], specularMap:this.specTextures[i] }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -384,7 +434,7 @@ class Viewer {
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x990000, normalMap: tex }));
+			const cubeMaterials = this.normTextures.map((tex,i) => new THREE.MeshPhongMaterial({ color: 0x990000, normalMap: tex, map:this.diffuseTextures[i], specularMap:this.specTextures[i] }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -400,10 +450,10 @@ class Viewer {
 		{
 
 			// Cube
-			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01 * 25, 1, 1)
+			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01 * 2.5, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x009900, normalMap: tex }));
+			const cubeMaterials = this.normTextures.map((tex,i) => new THREE.MeshPhongMaterial({ color: 0x009900, normalMap: tex, map:this.diffuseTextures[i], specularMap:this.specTextures[i] }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -423,7 +473,7 @@ class Viewer {
 			const cubeGeometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01, 1, 1)
 			//const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x999999 })
 
-			const cubeMaterials = this.normTextures.map(tex => new THREE.MeshPhongMaterial({ color: 0x999999, normalMap: tex }));
+			const cubeMaterials = this.normTextures.map((tex,i) => new THREE.MeshPhongMaterial({ color: 0x999999, normalMap: tex, map:this.diffuseTextures[i], specularMap:this.specTextures[i] }));
 			const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterials)
 
 			//cubeMaterial.normalMap = this.normTextures[5];
@@ -456,7 +506,7 @@ class Viewer {
 
 	initThree() {
 		// Camera
-		const camera = this.camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.0000005, 1000)
+		const camera = this.camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.0005, 100)
 		camera.position.set(0, 0.08, 0.3)
 
 		// Scene
