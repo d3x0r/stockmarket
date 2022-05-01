@@ -2,7 +2,7 @@
  * @author d3x0r / https://github.com/d3x0r
  */
 
-import * as THREE from "../3d/src/three.js/three.module.js"
+import * as THREE from "../3d/src/three.js/three.module.min.js"
 
 // lnQuat is used in Motion, but not directly here
 //import {lnQuat} from "../3d/src/lnQuatSq.js"
