@@ -2,11 +2,11 @@
  * @author d3x0r / https://github.com/d3x0r
  */
 
-import * as THREE from "../3d/src/three.js/three.module.min.js"
+import * as THREE from "./three.module.min.js"
 
 // lnQuat is used in Motion, but not directly here
 //import {lnQuat} from "../3d/src/lnQuatSq.js"
-import {THREE_consts,Motion} from "../3d/src/three.js/personalFill.mjs"
+import {THREE_consts,Motion} from "./personalFill.mjs"
 
 export function NaturalCamera( object, domElement ) {
 	var self = this;

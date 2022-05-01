@@ -1,5 +1,5 @@
 	
-import * as THREE from "./three.module.js"
+import * as THREE from "./three.module.min.js"
 import {directedDistance,lnQuat} from "../lnQuatSq.js"
 
 var vector3Pool = [];
