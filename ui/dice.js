@@ -73,49 +73,54 @@ if (document.fullscreenEnabled && document.fullScreenElement) {
 else console.log("User must manually lock screen; or pick fullscreen element.");
 
 
+let sensor = null;
 
-
-
-const sensor = new AbsoluteOrientationSensor({ frequency: 60 });
 //const sensor2 = new RelativeOrientationSensor({frequency:1});
 //const mat4 = new Float32Array(16);
 let was = Date.now();
 function initSensor() {
-	sensor.onerror = event => {
-		console.log(event.error.name, event.error.message);
-		state.useMouse = true;
+	if( "undefined" !== typeof AbsoluteOrientationSensor ) {
+		sensor = new AbsoluteOrientationSensor({ frequency: 60 });
+	}else {
+		console.log( "What does this browser have?" );
 	}
-	//sensor2.onerror = event => console.log(event.error.name, event.error.message);
-	sensor.onreading = () => {
-		//sensor.populateMatrix(mat4);
-		const q = sensor.quaternion;
-		//const lnQ = new lnQuat();
-		lnQuat.quatToLogQuat({ x: q[0], y: q[1], z: q[2], w: q[3] }, lnQWorld);
-		lnQWorldInv.x = -lnQWorld.x;
-		lnQWorldInv.y = -lnQWorld.y;
-		lnQWorldInv.z = -lnQWorld.z;
-		lnQWorldInv.dirty = true;
-
-		//lnQWorld2.set( lnQTangPlane ).freeSpin( lnQWorld );
-		lnQWorld2.set(lnQTangPlane).freeSpin(lnQWorldInv, true);
-		//lnQWorld.freeSpin( lnQTangPlane , true);
-
-		//console.log( "A Sensor?", q, lnQWorld );
-		//sensor.stop();
-	};
-	/*
-	sensor2.onreading = () => {
-			 //sensor.populateMatrix(mat4);
-			 const q =  sensor2.quaternion;
-			 //const lnQ = new lnQuat();
-			 lnQuat.quatToLogQuat( {x:q[0], y:q[1], z:q[2], w:q[3] }, lnQWorld2 );
-			 console.log( "B Sensor?", Date.now() - was, q, lnQWorld2 );
-			 //was = Date.now();
-		  //  sensor.stop();
-		  };
+	if( sensor ) {
+		sensor.onerror = event => {
+			console.log(event.error.name, event.error.message);
+			state.useMouse = true;
+		}
+		//sensor2.onerror = event => console.log(event.error.name, event.error.message);
+		sensor.onreading = () => {
+			//sensor.populateMatrix(mat4);
+			const q = sensor.quaternion;
+			//const lnQ = new lnQuat();
+			lnQuat.quatToLogQuat({ x: q[0], y: q[1], z: q[2], w: q[3] }, lnQWorld);
+			lnQWorldInv.x = -lnQWorld.x;
+			lnQWorldInv.y = -lnQWorld.y;
+			lnQWorldInv.z = -lnQWorld.z;
+			lnQWorldInv.dirty = true;
+	        
+			//lnQWorld2.set( lnQTangPlane ).freeSpin( lnQWorld );
+			lnQWorld2.set(lnQTangPlane).freeSpin(lnQWorldInv, true);
+			//lnQWorld.freeSpin( lnQTangPlane , true);
+	        
+			//console.log( "A Sensor?", q, lnQWorld );
+			//sensor.stop();
+		};
+		/*
+		sensor2.onreading = () => {
+				 //sensor.populateMatrix(mat4);
+				 const q =  sensor2.quaternion;
+				 //const lnQ = new lnQuat();
+				 lnQuat.quatToLogQuat( {x:q[0], y:q[1], z:q[2], w:q[3] }, lnQWorld2 );
+				 console.log( "B Sensor?", Date.now() - was, q, lnQWorld2 );
+				 //was = Date.now();
+			  //  sensor.stop();
+			  };
   */
 
-	sensor.start();
+		sensor.start();
+	}
 	//sensor2.start();
 
 }
@@ -776,6 +781,7 @@ ringMesh.quaternion.set(  Math.sin(Math.PI/4), 0,0,Math.cos( Math.PI/4) );
 		//console.log( "LOCATION", latitude, longitude);
 		//latitude = latitude*-2;
 		lnQTangPlane.set({ lat: Math.PI * ((lat)) / 180, lng: Math.PI * (tod + lng) / 180 }).conjugate().update();
+
 
 		/*
 		const alpha = this.physics.worldOrientation.a*Math.PI/180
