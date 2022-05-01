@@ -79,6 +79,7 @@ let sensor = null;
 //const mat4 = new Float32Array(16);
 let was = Date.now();
 function initSensor() {
+	state.useMouse = true;
 	if( "undefined" !== typeof AbsoluteOrientationSensor ) {
 		sensor = new AbsoluteOrientationSensor({ frequency: 60 });
 	}else {
