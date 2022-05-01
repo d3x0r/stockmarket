@@ -1,6 +1,6 @@
 	
 import * as THREE from "./three.module.min.js"
-import {directedDistance,lnQuat} from "../lnQuatSq.js"
+import {directedDistance,lnQuat} from "./lnQuatSq.js"
 
 var vector3Pool = [];
 export const Vector3Pool = {
